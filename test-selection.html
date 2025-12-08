@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Node Selection</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .instructions {
+            background: #f0f0f0;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .step {
+            margin: 10px 0;
+            padding: 10px;
+            background: white;
+            border-radius: 4px;
+            border-left: 4px solid #3b82f6;
+        }
+        code {
+            background: #e5e5e5;
+            padding: 2px 4px;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Test Instructions for Node Selection</h1>
+    
+    <div class="instructions">
+        <h2>How to test:</h2>
+        
+        <div class="step">
+            <h3>1. Open the app at <code>http://localhost:5174/</code></h3>
+            <p>The app should be running on port 5174</p>
+        </div>
+        
+        <div class="step">
+            <h3>2. Create a node</h3>
+            <p>Enter a topic in the input field and press Enter to create a node</p>
+        </div>
+        
+        <div class="step">
+            <h3>3. Click on the node</h3>
+            <p>Click anywhere on the node (not on the text). You should see:</p>
+            <ul>
+                <li>A blue ring around the node</li>
+                <li>"Text selectable" badge in the top-right corner</li>
+                <li>The cursor should change to a pointer when hovering over the node</li>
+            </ul>
+        </div>
+        
+        <div class="step">
+            <h3>4. Check console logs</h3>
+            <p>Open browser DevTools (F12) and check the Console tab. You should see:</p>
+            <ul>
+                <li><code>handleNodeClick called for node: node-xxxxx</code></li>
+                <li><code>CustomNode render - id: node-xxxxx selected: true</code></li>
+            </ul>
+        </div>
+        
+        <div class="step">
+            <h3>5. Try selecting text</h3>
+            <p>Once the node is selected (blue ring visible), try to select text inside the node</p>
+        </div>
+        
+        <div class="step">
+            <h3>6. Troubleshooting</h3>
+            <p>If node selection isn't working:</p>
+            <ul>
+                <li>Check if clicking triggers console logs</li>
+                <li>Check if the node has class "selected" in DevTools Elements tab</li>
+                <li>Look for any JavaScript errors in the console</li>
+            </ul>
+        </div>
+    </div>
+    
+    <p>Open this file in a browser alongside your app to follow the testing steps.</p>
+</body>
+</html>
