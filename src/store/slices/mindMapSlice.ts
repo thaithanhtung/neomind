@@ -49,13 +49,13 @@ export const loadMindMapData = createAsyncThunk<
   };
 });
 
-export const loadMindMapsList = createAsyncThunk<
-  MindMap[],
-  string
->('mindMap/loadList', async (userId) => {
-  const mindMaps = await mindMapService.getMindMaps(userId);
-  return mindMaps;
-});
+export const loadMindMapsList = createAsyncThunk<MindMap[], string>(
+  'mindMap/loadList',
+  async (userId) => {
+    const mindMaps = await mindMapService.getMindMaps(userId);
+    return mindMaps;
+  }
+);
 
 export const createNewMindMap = createAsyncThunk<
   { mindMapId: string; mindMap: MindMap },
@@ -66,9 +66,9 @@ export const createNewMindMap = createAsyncThunk<
     throw new Error('Failed to create mind map');
   }
 
-      // Load the created mind map
-      const mindMaps = await mindMapService.getMindMaps(userId);
-      const mindMap = mindMaps.find((m) => m.id === mindMapId);
+  // Load the created mind map
+  const mindMaps = await mindMapService.getMindMaps(userId);
+  const mindMap = mindMaps.find((m) => m.id === mindMapId);
   if (!mindMap) {
     throw new Error('Failed to find created mind map');
   }
@@ -228,9 +228,7 @@ const mindMapSlice = createSlice({
       })
       // Delete mind map
       .addCase(deleteMindMapAction.fulfilled, (state, action) => {
-        state.mindMaps = state.mindMaps.filter(
-          (m) => m.id !== action.payload
-        );
+        state.mindMaps = state.mindMaps.filter((m) => m.id !== action.payload);
         // Nếu đang xem mind map bị xóa, clear data
         if (state.mindMapId === action.payload) {
           state.nodes = [];
@@ -257,4 +255,3 @@ export const {
 } = mindMapSlice.actions;
 
 export default mindMapSlice.reducer;
-

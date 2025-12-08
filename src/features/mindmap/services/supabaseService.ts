@@ -189,19 +189,66 @@ export const mindMapService = {
     }
 
     try {
-      // Convert and upsert nodes
-      const nodeRows = nodes.map((node) => nodeToRow(node, mindMapId));
-      const { error: nodesError } = await supabase
-        .from('nodes')
-        .upsert(nodeRows, { onConflict: 'id' });
+      // Lọc ra các nodes không đang loading (chỉ lưu nodes đã hoàn thành)
+      const completedNodes = nodes.filter((node) => !node.data.isLoading);
 
-      if (nodesError) {
-        console.error('Error saving nodes:', nodesError);
-        throw nodesError;
+      // Lấy danh sách IDs của các nodes đã hoàn thành
+      const completedNodeIds = new Set(completedNodes.map((n) => n.id));
+
+      // Lấy tất cả node IDs hiện có trong database cho mind map này
+      const { data: existingNodesData, error: fetchError } = await supabase
+        .from('nodes')
+        .select('id')
+        .eq('mind_map_id', mindMapId);
+
+      if (fetchError) {
+        console.error('Error fetching existing nodes:', fetchError);
+        // Continue anyway, không critical
       }
 
-      // Convert and upsert edges
-      const edgeRows: EdgeRow[] = edges.map((edge) => ({
+      // Tìm các nodes cần xóa (có trong database nhưng không còn trong state)
+      const existingNodeIds = new Set(
+        existingNodesData?.map((n) => n.id) || []
+      );
+      const nodesToDelete = Array.from(existingNodeIds).filter(
+        (id) => !completedNodeIds.has(id)
+      );
+
+      // Xóa các nodes không còn trong state khỏi database
+      if (nodesToDelete.length > 0) {
+        const { error: deleteNodesError } = await supabase
+          .from('nodes')
+          .delete()
+          .in('id', nodesToDelete);
+
+        if (deleteNodesError) {
+          console.error('Error deleting nodes:', deleteNodesError);
+          throw deleteNodesError;
+        }
+      }
+
+      // Lọc ra các edges chỉ liên quan đến nodes đã hoàn thành
+      const validEdges = edges.filter(
+        (edge) =>
+          completedNodeIds.has(edge.source) && completedNodeIds.has(edge.target)
+      );
+
+      // Convert and upsert nodes (chỉ các nodes đã hoàn thành)
+      const nodeRows = completedNodes.map((node) => nodeToRow(node, mindMapId));
+
+      if (nodeRows.length > 0) {
+        const { error: nodesError } = await supabase
+          .from('nodes')
+          .upsert(nodeRows, { onConflict: 'id' });
+
+        if (nodesError) {
+          console.error('Error saving nodes:', nodesError);
+          throw nodesError;
+        }
+      }
+
+      // Convert and upsert edges (chỉ các edges hợp lệ)
+      const edgeRows: EdgeRow[] = validEdges.map((edge) => ({
         id: edge.id,
         mind_map_id: mindMapId,
         source_id: edge.source,
@@ -209,22 +256,54 @@ export const mindMapService = {
         type: edge.type || 'smoothstep',
       }));
 
-      const { error: edgesError } = await supabase
-        .from('edges')
-        .upsert(edgeRows, { onConflict: 'id' });
+      if (edgeRows.length > 0) {
+        const { error: edgesError } = await supabase
+          .from('edges')
+          .upsert(edgeRows, { onConflict: 'id' });
 
-      if (edgesError) {
-        console.error('Error saving edges:', edgesError);
-        throw edgesError;
+        if (edgesError) {
+          console.error('Error saving edges:', edgesError);
+          throw edgesError;
+        }
       }
 
-      // Delete old highlighted texts for this mind map
-      const nodeIds = nodes.map((n) => n.id);
-      if (nodeIds.length > 0) {
+      // Xóa các edges không còn trong state khỏi database
+      const { data: existingEdgesData, error: fetchEdgesError } = await supabase
+        .from('edges')
+        .select('id')
+        .eq('mind_map_id', mindMapId);
+
+      if (fetchEdgesError) {
+        console.error('Error fetching existing edges:', fetchEdgesError);
+        // Continue anyway
+      } else {
+        const existingEdgeIds = new Set(
+          existingEdgesData?.map((e) => e.id) || []
+        );
+        const validEdgeIds = new Set(validEdges.map((e) => e.id));
+        const edgesToDelete = Array.from(existingEdgeIds).filter(
+          (id) => !validEdgeIds.has(id)
+        );
+
+        if (edgesToDelete.length > 0) {
+          const { error: deleteEdgesError } = await supabase
+            .from('edges')
+            .delete()
+            .in('id', edgesToDelete);
+
+          if (deleteEdgesError) {
+            console.error('Error deleting edges:', deleteEdgesError);
+            // Continue anyway, không critical
+          }
+        }
+      }
+
+      // Delete old highlighted texts for completed nodes only
+      if (completedNodeIds.size > 0) {
         const { error: deleteError } = await supabase
           .from('highlighted_texts')
           .delete()
-          .in('node_id', nodeIds);
+          .in('node_id', Array.from(completedNodeIds));
 
         if (deleteError) {
           console.error('Error deleting old highlights:', deleteError);
@@ -232,19 +311,25 @@ export const mindMapService = {
         }
       }
 
-      // Insert new highlighted texts
+      // Insert new highlighted texts (chỉ cho các nodes đã hoàn thành)
       const highlightRows: HighlightedTextRow[] = [];
       highlightedTexts.forEach((highlights, nodeId) => {
-        highlights.forEach((highlight) => {
-          highlightRows.push({
-            id: crypto.randomUUID(),
-            node_id: nodeId,
-            start_index: highlight.startIndex,
-            end_index: highlight.endIndex,
-            target_node_id: highlight.nodeId || null,
-            level: highlight.level,
+        // Chỉ lưu highlights của các nodes đã hoàn thành
+        if (completedNodeIds.has(nodeId)) {
+          highlights.forEach((highlight) => {
+            // Chỉ lưu highlight nếu target node cũng đã hoàn thành hoặc null
+            if (!highlight.nodeId || completedNodeIds.has(highlight.nodeId)) {
+              highlightRows.push({
+                id: crypto.randomUUID(),
+                node_id: nodeId,
+                start_index: highlight.startIndex,
+                end_index: highlight.endIndex,
+                target_node_id: highlight.nodeId || null,
+                level: highlight.level,
+              });
+            }
           });
-        });
+        }
       });
 
       if (highlightRows.length > 0) {

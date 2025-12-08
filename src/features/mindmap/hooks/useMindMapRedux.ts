@@ -22,7 +22,8 @@ import {
   setHighlightedTexts,
   addNode,
   addEdge as addEdgeAction,
-  setLoading,
+  updateNode,
+  removeNode,
   setMindMapId,
   setLoadingData,
 } from '@/store/slices/mindMapSlice';
@@ -76,14 +77,19 @@ export const useMindMapRedux = () => {
   useEffect(() => {
     if (mindMaps.length > 0 && !mindMapId && !isLoadingMindMaps) {
       dispatch(setMindMapId(mindMaps[0].id));
-    } else if (mindMaps.length === 0 && !isLoadingMindMaps && !mindMapId && isLoadingData) {
+    } else if (
+      mindMaps.length === 0 &&
+      !isLoadingMindMaps &&
+      !mindMapId &&
+      isLoadingData
+    ) {
       // Nếu không có mind map nào và đã load xong danh sách, set loading = false
       // Điều này xảy ra khi user mới chưa có mind map nào
       dispatch(setLoadingData(false));
     }
   }, [mindMaps, mindMapId, isLoadingMindMaps, isLoadingData, dispatch]);
 
-  // Load mind map được chọn
+  // Load mind map được chọn (chỉ load khi mindMapId thay đổi, không load lại khi nodes thay đổi)
   useEffect(() => {
     if (!mindMapId || isLoadingRef.current) {
       return;
@@ -139,26 +145,30 @@ export const useMindMapRedux = () => {
 
   const onNodesChange = useCallback(
     (changes: NodeChange[]) => {
-      const updatedNodes = applyNodeChanges(changes, nodes);
+      // Lấy nodes hiện tại từ store thay vì từ closure
+      dispatch((dispatch, getState) => {
+        const currentNodes = getState().mindMap.nodes;
+        const updatedNodes = applyNodeChanges(changes, currentNodes);
 
-      // Lưu width và height vào data khi node được resize
-      const nodesWithData = updatedNodes.map((node) => {
-        if (node.width !== undefined || node.height !== undefined) {
-          return {
-            ...node,
-            data: {
-              ...node.data,
-              width: node.width ?? node.data.width,
-              height: node.height ?? node.data.height,
-            },
-          };
-        }
-        return node;
+        // Lưu width và height vào data khi node được resize
+        const nodesWithData = updatedNodes.map((node) => {
+          if (node.width !== undefined || node.height !== undefined) {
+            return {
+              ...node,
+              data: {
+                ...node.data,
+                width: node.width ?? node.data.width,
+                height: node.height ?? node.data.height,
+              },
+            };
+          }
+          return node;
+        });
+
+        dispatch(setNodes(nodesWithData));
       });
-
-      dispatch(setNodes(nodesWithData));
     },
-    [nodes, dispatch]
+    [dispatch]
   );
 
   const onEdgesChange = useCallback(
@@ -179,13 +189,106 @@ export const useMindMapRedux = () => {
 
   const handleNodeClick = useCallback(
     (_event: React.MouseEvent, node: Node) => {
-      const updatedNodes = nodes.map((n) => ({
-        ...n,
-        selected: n.id === node.id ? !n.selected : false,
-      }));
-      dispatch(setNodes(updatedNodes));
+      // Lấy nodes hiện tại từ store thay vì từ closure để tránh stale data
+      dispatch((dispatch, getState) => {
+        const currentNodes = getState().mindMap.nodes;
+        const updatedNodes = currentNodes.map((n) => ({
+          ...n,
+          selected: n.id === node.id ? !n.selected : false,
+        }));
+        dispatch(setNodes(updatedNodes));
+      });
     },
-    [nodes, dispatch]
+    [dispatch]
+  );
+
+  const handleDeleteNode = useCallback(
+    (nodeId: string) => {
+      if (
+        !confirm(
+          'Bạn có chắc muốn xóa node này? Tất cả các node con và edges liên quan cũng sẽ bị xóa.'
+        )
+      ) {
+        return;
+      }
+
+      dispatch((dispatch, getState) => {
+        const state = getState().mindMap;
+
+        // Hàm đệ quy để tìm tất cả node con (bao gồm cả node con của node con)
+        const findAllChildNodes = (
+          parentId: string,
+          allNodes: Node<NodeData>[]
+        ): string[] => {
+          const childIds: string[] = [];
+          const directChildren = allNodes.filter(
+            (n) => n.data.parentId === parentId
+          );
+
+          directChildren.forEach((child) => {
+            childIds.push(child.id);
+            // Tìm node con của node con (đệ quy)
+            const grandChildren = findAllChildNodes(child.id, allNodes);
+            childIds.push(...grandChildren);
+          });
+
+          return childIds;
+        };
+
+        // Tìm tất cả node con cần xóa
+        const childNodeIds = findAllChildNodes(nodeId, state.nodes);
+        const allNodesToDelete = [nodeId, ...childNodeIds];
+
+        // Xóa từng node (bắt đầu từ node con trước để tránh lỗi)
+        // Xóa theo thứ tự ngược lại (node con trước, node cha sau)
+        allNodesToDelete.reverse().forEach((id) => {
+          dispatch(removeNode(id));
+        });
+
+        // Xóa highlighted texts liên quan đến tất cả các node bị xóa
+        const newHighlightedTexts = new Map(state.highlightedTexts);
+        allNodesToDelete.forEach((id) => {
+          // Xóa highlights của node bị xóa
+          newHighlightedTexts.delete(id);
+        });
+
+        // Xóa highlights có target_node_id là một trong các node bị xóa
+        newHighlightedTexts.forEach((highlights, nodeIdKey) => {
+          const filteredHighlights = highlights.filter(
+            (h) => !allNodesToDelete.includes(h.nodeId)
+          );
+          if (filteredHighlights.length !== highlights.length) {
+            if (filteredHighlights.length === 0) {
+              newHighlightedTexts.delete(nodeIdKey);
+            } else {
+              newHighlightedTexts.set(nodeIdKey, filteredHighlights);
+            }
+          }
+        });
+
+        dispatch(setHighlightedTexts(newHighlightedTexts));
+
+        // Force save ngay sau khi xóa node để đảm bảo được lưu vào database
+        // Lấy state mới nhất sau khi đã xóa
+        const updatedState = getState().mindMap;
+        if (updatedState.mindMapId) {
+          // Clear timeout hiện tại nếu có để tránh conflict
+          if (saveTimeoutRef.current) {
+            clearTimeout(saveTimeoutRef.current);
+          }
+          // Save ngay lập tức với state mới nhất
+          dispatch(
+            saveMindMapData({
+              mindMapId: updatedState.mindMapId,
+              nodes: updatedState.nodes,
+              edges: updatedState.edges,
+              highlightedTexts: updatedState.highlightedTexts,
+            })
+          );
+        }
+      });
+    },
+    [dispatch]
   );
 
   const handleTextSelected = useCallback(
@@ -194,33 +297,29 @@ export const useMindMapRedux = () => {
         customPrompt || ''
       }`;
 
-      if (creatingNodeRef.current.has(requestKey) || isLoading) {
+      // Chỉ kiểm tra duplicate request, không kiểm tra isLoading global
+      if (creatingNodeRef.current.has(requestKey)) {
         return;
       }
 
       creatingNodeRef.current.add(requestKey);
-      dispatch(setLoading(true));
+
+      let newNodeId: string | null = null;
 
       try {
         const parentNode = nodes.find((n) => n.id === selected.nodeId);
         if (!parentNode) {
-          dispatch(setLoading(false));
           creatingNodeRef.current.delete(requestKey);
           return;
         }
 
-        const content = await generateRelatedContent(
-          selected.text,
-          parentNode.data.label,
-          customPrompt
-        );
-
-        const newNodeId = createNodeId();
+        newNodeId = createNodeId();
         const parentData = parentNode.data as NodeData;
         const nodeLabel = customPrompt || selected.text;
 
         const position = getNodePosition(parentNode, nodes, 400, 300);
 
+        // Tạo node với loading state trước
         const newNode: Node<NodeData> = {
           id: newNodeId,
           type: 'custom',
@@ -230,11 +329,12 @@ export const useMindMapRedux = () => {
           data: {
             id: newNodeId,
             label: nodeLabel,
-            content: content.replace(/\n/g, '<br>'),
+            content: '',
             level: parentData.level + 1,
             parentId: selected.nodeId,
             width: 400,
             height: 300,
+            isLoading: true,
           },
           selected: false,
         };
@@ -246,6 +346,29 @@ export const useMindMapRedux = () => {
           type: 'smoothstep',
         };
 
+        // Thêm node và edge với loading state
+        dispatch(addNode(newNode));
+        dispatch(addEdgeAction(newEdge));
+
+        // Generate content
+        const content = await generateRelatedContent(
+          selected.text,
+          parentNode.data.label,
+          customPrompt
+        );
+
+        // Cập nhật node với content và tắt loading
+        const updatedNode: Node<NodeData> = {
+          ...newNode,
+          data: {
+            ...newNode.data,
+            content: content.replace(/\n/g, '<br>'),
+            isLoading: false,
+          },
+        };
+
+        dispatch(updateNode(updatedNode));
+
         const highlightedText: HighlightedText = {
           startIndex: selected.startIndex,
           endIndex: selected.endIndex,
@@ -253,21 +376,21 @@ export const useMindMapRedux = () => {
           level: parentData.level + 1,
         };
 
-        dispatch(addNode(newNode));
-        dispatch(addEdgeAction(newEdge));
-
         const newMap = new Map(highlightedTexts);
         const parentHighlights = newMap.get(selected.nodeId) || [];
         newMap.set(selected.nodeId, [...parentHighlights, highlightedText]);
         dispatch(setHighlightedTexts(newMap));
       } catch (error) {
         console.error('Error in handleTextSelected:', error);
+        // Xóa node và edge nếu có lỗi
+        if (newNodeId) {
+          dispatch(removeNode(newNodeId));
+        }
       } finally {
-        dispatch(setLoading(false));
         creatingNodeRef.current.delete(requestKey);
       }
     },
-    [nodes, highlightedTexts, isLoading, dispatch]
+    [nodes, highlightedTexts, dispatch]
   );
 
   const handleCreateNewMindMap = useCallback(
@@ -304,14 +427,18 @@ export const useMindMapRedux = () => {
   const handleDeleteMindMap = useCallback(
     async (mindMapIdToDelete: string) => {
       const wasViewingDeletedMap = mindMapIdToDelete === mindMapId;
-      
+
       try {
-        await dispatch(deleteMindMapAction({ mindMapId: mindMapIdToDelete })).unwrap();
-        
+        await dispatch(
+          deleteMindMapAction({ mindMapId: mindMapIdToDelete })
+        ).unwrap();
+
         // Tính toán remaining maps bằng cách loại bỏ mind map đã xóa
         // (Reducer đã cập nhật state, nhưng component chưa re-render nên dùng giá trị hiện tại)
-        const remainingMaps = mindMaps.filter((m) => m.id !== mindMapIdToDelete);
-        
+        const remainingMaps = mindMaps.filter(
+          (m) => m.id !== mindMapIdToDelete
+        );
+
         // Nếu đang xem mind map bị xóa, chọn mind map đầu tiên còn lại
         // Không tự động tạo mind map mới khi xóa đến item cuối cùng
         if (wasViewingDeletedMap) {
@@ -337,44 +464,54 @@ export const useMindMapRedux = () => {
         throw new Error('Chưa chọn mind map');
       }
 
-      if (isLoading) {
-        return;
-      }
+      const newNodeId = createNodeId();
+      const position = getInitialNodePosition();
 
-      dispatch(setLoading(true));
-
-      try {
-        const content = await generateContent(topic);
-        const newNodeId = createNodeId();
-
-        const position = getInitialNodePosition();
-
-        const newNode: Node<NodeData> = {
+      // Tạo node với loading state trước
+      const newNode: Node<NodeData> = {
+        id: newNodeId,
+        type: 'custom',
+        position,
+        width: 400,
+        height: 300,
+        data: {
           id: newNodeId,
-          type: 'custom',
-          position,
+          label: topic,
+          content: '',
+          level: 0,
           width: 400,
           height: 300,
+          isLoading: true,
+        },
+        selected: false,
+      };
+
+      // Thêm node với loading state - node sẽ hiển thị loading spinner
+      dispatch(addNode(newNode));
+
+      try {
+        // Generate content từ OpenAI - đợi API response trước khi cập nhật
+        const content = await generateContent(topic);
+
+        // Cập nhật node với content và tắt loading
+        const updatedNode: Node<NodeData> = {
+          ...newNode,
           data: {
-            id: newNodeId,
-            label: topic,
+            ...newNode.data,
             content: content.replace(/\n/g, '<br>'),
-            level: 0,
-            width: 400,
-            height: 300,
+            isLoading: false,
           },
-          selected: false,
         };
 
-        dispatch(addNode(newNode));
+        dispatch(updateNode(updatedNode));
       } catch (error) {
         console.error('Error creating node:', error);
+        // Xóa node nếu có lỗi
+        dispatch(removeNode(newNodeId));
         throw error;
-      } finally {
-        dispatch(setLoading(false));
       }
     },
-    [mindMapId, isLoading, dispatch]
+    [mindMapId, dispatch]
   );
 
   return {
@@ -391,6 +528,7 @@ export const useMindMapRedux = () => {
     onConnect,
     handleNodeClick,
     handleTextSelected,
+    handleDeleteNode,
     setNodes: (nodes: Node<NodeData>[]) => dispatch(setNodes(nodes)),
     onCreateNode: handleCreateNode,
     onCreateNewMindMap: handleCreateNewMindMap,
@@ -399,4 +537,3 @@ export const useMindMapRedux = () => {
     onDeleteMindMap: handleDeleteMindMap,
   };
 };
-

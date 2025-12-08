@@ -11,9 +11,12 @@ export const store = configureStore({
     getDefaultMiddleware({
       serializableCheck: {
         // Ignore these action types
-        ignoredActions: ['mindMap/setHighlightedTexts'],
+        ignoredActions: ['mindMap/setHighlightedTexts', 'mindMap/saveData'],
         // Ignore these field paths in all actions
-        ignoredActionPaths: ['payload.highlightedTexts'],
+        ignoredActionPaths: [
+          'payload.highlightedTexts',
+          'meta.arg.highlightedTexts',
+        ],
         // Ignore these paths in the state
         ignoredPaths: ['mindMap.highlightedTexts'],
       },

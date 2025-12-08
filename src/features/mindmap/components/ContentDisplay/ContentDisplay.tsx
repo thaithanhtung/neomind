@@ -20,7 +20,8 @@ export const ContentDisplay = ({
 }: ContentDisplayProps) => {
   const [showPromptModal, setShowPromptModal] = useState(false);
   const [prompt, setPrompt] = useState('');
-  const [savedSelectedText, setSavedSelectedText] = useState<SelectedText | null>(null);
+  const [savedSelectedText, setSavedSelectedText] =
+    useState<SelectedText | null>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const modalRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -45,31 +46,33 @@ export const ContentDisplay = ({
     cancelSelection();
   }, [cancelSelection]);
 
-  const handleAddButtonClick = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation();
-    e.preventDefault();
-    
-    // Lưu selectedText trước khi clear selection
-    if (selectedText) {
-      setSavedSelectedText(selectedText);
-      setPrompt(selectedText.text || '');
-      // Xóa text selection sau khi đã lưu
-      setTimeout(() => {
-        window.getSelection()?.removeAllRanges();
-      }, 0);
-      setShowPromptModal(true);
-    }
-  }, [selectedText]);
+  const handleAddButtonClick = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      e.preventDefault();
+
+      // Lưu selectedText trước khi clear selection
+      if (selectedText) {
+        setSavedSelectedText(selectedText);
+        setPrompt(selectedText.text || '');
+        // Xóa text selection sau khi đã lưu
+        setTimeout(() => {
+          window.getSelection()?.removeAllRanges();
+        }, 0);
+        setShowPromptModal(true);
+      }
+    },
+    [selectedText]
+  );
 
   const handleCreateNode = useCallback(() => {
     if (isCreatingRef.current) {
-      console.log('handleCreateNode: Already creating, skipping...');
       return;
     }
 
     // Sử dụng savedSelectedText thay vì selectedText vì selectedText có thể đã bị clear
     const textToUse = savedSelectedText || selectedText;
-    
+
     if (!textToUse || !onTextSelected) {
       return;
     }
@@ -155,4 +158,3 @@ export const ContentDisplay = ({
     </div>
   );
 };
-

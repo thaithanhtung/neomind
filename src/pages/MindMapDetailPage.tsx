@@ -28,6 +28,7 @@ export const MindMapDetailPage = () => {
     onConnect,
     handleNodeClick,
     handleTextSelected,
+    handleDeleteNode,
     onCreateNode,
     onSelectMindMap,
   } = useMindMapRedux();
@@ -134,7 +135,11 @@ export const MindMapDetailPage = () => {
           </div>
         ) : (
           <div className='w-full h-full animate-fadeIn'>
-            <MindMapProvider onTextSelected={handleTextSelected}>
+            <MindMapProvider
+              onTextSelected={handleTextSelected}
+              highlightedTexts={highlightedTexts}
+              onDeleteNode={handleDeleteNode}
+            >
               <MindMap
                 nodes={nodes}
                 edges={edges}
@@ -142,14 +147,11 @@ export const MindMapDetailPage = () => {
                 onEdgesChange={onEdgesChange}
                 onConnect={onConnect}
                 onNodeClick={handleNodeClick}
-                highlightedTexts={highlightedTexts}
               />
             </MindMapProvider>
           </div>
         )}
       </div>
-
-      {isLoading && <LoadingOverlay />}
     </div>
   );
 };
