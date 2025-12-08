@@ -303,19 +303,32 @@ export const useMindMapRedux = () => {
 
   const handleDeleteMindMap = useCallback(
     async (mindMapIdToDelete: string) => {
-      await dispatch(deleteMindMapAction({ mindMapId: mindMapIdToDelete }));
-      // Nếu đang xem mind map bị xóa, chọn mind map đầu tiên hoặc tạo mới
-      if (mindMapIdToDelete === mindMapId) {
+      const wasViewingDeletedMap = mindMapIdToDelete === mindMapId;
+      
+      try {
+        await dispatch(deleteMindMapAction({ mindMapId: mindMapIdToDelete })).unwrap();
+        
+        // Tính toán remaining maps bằng cách loại bỏ mind map đã xóa
+        // (Reducer đã cập nhật state, nhưng component chưa re-render nên dùng giá trị hiện tại)
         const remainingMaps = mindMaps.filter((m) => m.id !== mindMapIdToDelete);
-        if (remainingMaps.length > 0) {
-          dispatch(setMindMapId(remainingMaps[0].id));
-        } else {
-          // Tạo mind map mới nếu không còn mind map nào
-          await handleCreateNewMindMap();
+        
+        // Nếu đang xem mind map bị xóa, chọn mind map đầu tiên còn lại
+        // Không tự động tạo mind map mới khi xóa đến item cuối cùng
+        if (wasViewingDeletedMap) {
+          if (remainingMaps.length > 0) {
+            // Chọn mind map đầu tiên còn lại
+            dispatch(setMindMapId(remainingMaps[0].id));
+          } else {
+            // Không còn mind map nào, chỉ clear mindMapId
+            // Component sẽ tự động redirect về trang list và hiển thị empty state
+            dispatch(setMindMapId(null));
+          }
         }
+      } catch (error) {
+        console.error('Error deleting mind map:', error);
       }
     },
-    [mindMapId, mindMaps, user?.id, dispatch, handleCreateNewMindMap]
+    [mindMapId, mindMaps, dispatch]
   );
 
   const handleCreateNode = useCallback(

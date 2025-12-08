@@ -39,6 +39,13 @@ export const MindMapDetailPage = () => {
     }
   }, [id, currentMindMapId, onSelectMindMap]);
 
+  // Sync URL khi currentMindMapId thay đổi (ví dụ: sau khi xóa mind map cuối cùng và tạo mới)
+  useEffect(() => {
+    if (currentMindMapId && currentMindMapId !== id && !isLoadingData) {
+      navigate(`/mindmaps/${currentMindMapId}`, { replace: true });
+    }
+  }, [currentMindMapId, id, isLoadingData, navigate]);
+
   // Auto-hide input when mind map has nodes
   useEffect(() => {
     if (nodes.length > 0) {
@@ -52,6 +59,9 @@ export const MindMapDetailPage = () => {
   useEffect(() => {
     if (!isLoadingData && !currentMindMapId && mindMaps.length > 0) {
       navigate('/');
+    } else if (!isLoadingData && !currentMindMapId && mindMaps.length === 0) {
+      // Nếu không có mind map nào, redirect về trang list
+      navigate('/', { replace: true });
     }
   }, [currentMindMapId, mindMaps.length, isLoadingData, navigate]);
 
