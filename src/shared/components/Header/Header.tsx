@@ -3,18 +3,14 @@ import { useNavigate } from 'react-router-dom';
 import { useAuthRedux } from '@/features/auth/hooks/useAuthRedux';
 
 interface HeaderProps {
-  nodesCount: number;
-  showInput: boolean;
-  onToggleInput: () => void;
+  nodesCount?: number;
+  showInput?: boolean;
+  onToggleInput?: () => void;
   onShowMindMapList?: () => void;
 }
 
-export const Header = ({
-  nodesCount,
-  showInput,
-  onToggleInput,
-  onShowMindMapList,
-}: HeaderProps) => {
+export const Header = (props: HeaderProps) => {
+  const { onShowMindMapList } = props;
   const navigate = useNavigate();
   const { user, signOut } = useAuthRedux();
 

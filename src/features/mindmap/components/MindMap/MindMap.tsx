@@ -9,6 +9,8 @@ import ReactFlow, {
   NodeTypes,
   NodeChange,
   EdgeChange,
+  MarkerType,
+  BackgroundVariant,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { NodeData, HighlightedText } from '@/features/mindmap/types';
@@ -54,12 +56,12 @@ export const MindMap = ({
         stroke: '#6366f1', 
         strokeWidth: 3,
         strokeDasharray: '0',
-        strokeLinecap: 'round',
+        strokeLinecap: 'round' as const,
       },
-      type: 'smoothstep',
+      type: 'smoothstep' as const,
       animated: false,
       markerEnd: {
-        type: 'arrowclosed',
+        type: MarkerType.ArrowClosed,
         width: 20,
         height: 20,
         color: '#6366f1',
@@ -121,7 +123,7 @@ export const MindMap = ({
         <Background 
           color='#e5e7eb' 
           gap={20} 
-          variant='dots'
+          variant={BackgroundVariant.Dots}
           size={1.5}
         />
         <Controls 

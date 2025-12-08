@@ -83,8 +83,12 @@ export const useTextSelection = ({
         let buttonTop = rect.top - parentRect.top + (rect.height / 2) - (buttonHeight / 2);
         
         // Giới hạn trong phạm vi parent element
-        const maxLeft = parentElement ? parentElement.offsetWidth - buttonWidth - offset : contentRect.width - buttonWidth - offset;
-        const maxTop = parentElement ? parentElement.offsetHeight - buttonHeight - offset : contentRect.height - buttonHeight - offset;
+        const maxLeft = parentElement && parentElement instanceof HTMLElement 
+          ? parentElement.offsetWidth - buttonWidth - offset 
+          : contentRect.width - buttonWidth - offset;
+        const maxTop = parentElement && parentElement instanceof HTMLElement
+          ? parentElement.offsetHeight - buttonHeight - offset
+          : contentRect.height - buttonHeight - offset;
         
         // Kiểm tra nếu button tràn ra ngoài bên phải
         if (buttonLeft > maxLeft) {
@@ -211,8 +215,12 @@ export const useTextSelection = ({
           let buttonLeft = rect.right - parentRect.left + offset;
           let buttonTop = rect.top - parentRect.top + (rect.height / 2) - (buttonHeight / 2);
           
-          const maxLeft = parentElement ? parentElement.offsetWidth - buttonWidth - offset : contentRect.width - buttonWidth - offset;
-          const maxTop = parentElement ? parentElement.offsetHeight - buttonHeight - offset : contentRect.height - buttonHeight - offset;
+          const maxLeft = parentElement && parentElement instanceof HTMLElement
+            ? parentElement.offsetWidth - buttonWidth - offset
+            : contentRect.width - buttonWidth - offset;
+          const maxTop = parentElement && parentElement instanceof HTMLElement
+            ? parentElement.offsetHeight - buttonHeight - offset
+            : contentRect.height - buttonHeight - offset;
           
           if (buttonLeft > maxLeft) {
             buttonLeft = rect.left - parentRect.left - buttonWidth - offset;
