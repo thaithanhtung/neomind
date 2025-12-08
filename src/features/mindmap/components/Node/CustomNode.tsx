@@ -1,6 +1,6 @@
 import { memo, useState } from 'react';
 import { Handle, Position, NodeProps, NodeResizeControl } from 'reactflow';
-import { Maximize2, Sparkles, Zap, Brain } from 'lucide-react';
+import { Maximize2, Sparkles, Zap, Brain, Loader2 } from 'lucide-react';
 import { NodeData, HighlightedText } from '@/features/mindmap/types';
 import { useMindMapContext } from '@/features/mindmap/context';
 import {
@@ -23,7 +23,9 @@ export const CustomNode = memo(
     const colorClass = LEVEL_COLORS[data.level % LEVEL_COLORS.length];
     const borderClass = selected
       ? BORDER_COLORS[data.level % BORDER_COLORS.length]
-      : isHovered ? 'border-gray-400' : 'border-gray-300';
+      : isHovered
+      ? 'border-gray-400'
+      : 'border-gray-300';
 
     const controlStyle = {
       background: 'transparent',
@@ -56,9 +58,7 @@ export const CustomNode = memo(
       <div
         className={`rounded-2xl shadow-xl ${colorClass} border-2 ${borderClass} transition-all duration-300 relative transform ${
           selected ? 'ring-4 ring-offset-2 ring-blue-400 scale-[1.02]' : ''
-        } ${
-          isHovered && !selected ? 'shadow-2xl scale-[1.01]' : ''
-        }`}
+        } ${isHovered && !selected ? 'shadow-2xl scale-[1.01]' : ''}`}
         style={{
           width: `${nodeWidth}px`,
           height: `${nodeHeight}px`,
@@ -80,10 +80,10 @@ export const CustomNode = memo(
             </div>
           </NodeResizeControl>
         )}
-        <Handle 
-          type='target' 
-          position={Position.Top} 
-          className='w-4 h-4 !bg-gradient-to-br !from-blue-500 !to-indigo-600 !border-2 !border-white shadow-lg' 
+        <Handle
+          type='target'
+          position={Position.Top}
+          className='w-4 h-4 !bg-gradient-to-br !from-blue-500 !to-indigo-600 !border-2 !border-white shadow-lg'
         />
 
         <div className='p-4 h-full flex flex-col overflow-hidden'>
@@ -94,12 +94,17 @@ export const CustomNode = memo(
                 Text selectable
               </div>
             )}
-            <div className={`p-1.5 rounded-lg shadow-sm ${
-              data.level === 0 ? 'bg-purple-100 text-purple-600' :
-              data.level === 1 ? 'bg-blue-100 text-blue-600' :
-              data.level === 2 ? 'bg-green-100 text-green-600' :
-              'bg-gray-100 text-gray-600'
-            }`}>
+            <div
+              className={`p-1.5 rounded-lg shadow-sm ${
+                data.level === 0
+                  ? 'bg-purple-100 text-purple-600'
+                  : data.level === 1
+                  ? 'bg-blue-100 text-blue-600'
+                  : data.level === 2
+                  ? 'bg-green-100 text-green-600'
+                  : 'bg-gray-100 text-gray-600'
+              }`}
+            >
               {getLevelIcon()}
             </div>
           </div>
@@ -115,22 +120,43 @@ export const CustomNode = memo(
             />
           </div>
           <div className='flex-1 min-h-0 overflow-hidden'>
-            <NodeContent
-              content={data.content}
-              nodeId={data.id}
-              selected={selected}
-              highlightedTexts={highlightedTexts}
-              onTextSelected={onTextSelected}
-            />
+            {data.isLoading ? (
+              <div className='w-full h-full flex items-center justify-center p-8'>
+                <div className='flex flex-col items-center gap-4'>
+                  <div className='relative'>
+                    <div className='absolute inset-0 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full blur-xl opacity-40 animate-pulse'></div>
+                    <div className='relative w-12 h-12 rounded-full bg-gradient-to-r from-blue-500 to-indigo-600 flex items-center justify-center animate-spin'>
+                      <Loader2 className='w-6 h-6 text-white' />
+                    </div>
+                  </div>
+                  <div className='text-center'>
+                    <p className='text-sm font-medium text-gray-700'>
+                      Đang tạo nội dung...
+                    </p>
+                    <p className='text-xs text-gray-500 mt-1'>
+                      Vui lòng chờ trong giây lát
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <NodeContent
+                content={data.content}
+                nodeId={data.id}
+                selected={selected}
+                highlightedTexts={highlightedTexts}
+                onTextSelected={onTextSelected}
+              />
+            )}
           </div>
         </div>
 
-        <Handle 
-          type='source' 
-          position={Position.Bottom} 
-          className='w-4 h-4 !bg-gradient-to-br !from-blue-500 !to-indigo-600 !border-2 !border-white shadow-lg' 
+        <Handle
+          type='source'
+          position={Position.Bottom}
+          className='w-4 h-4 !bg-gradient-to-br !from-blue-500 !to-indigo-600 !border-2 !border-white shadow-lg'
         />
-        
+
         {/* Hover effect gradient */}
         {isHovered && !selected && (
           <div className='absolute inset-0 bg-gradient-to-br from-blue-500/5 to-indigo-500/5 rounded-2xl pointer-events-none animate-fadeIn' />

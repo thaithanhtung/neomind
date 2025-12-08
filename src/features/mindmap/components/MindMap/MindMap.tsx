@@ -97,6 +97,7 @@ export const MindMap = ({
   );
 
   const handlePaneClick = useCallback(() => {
+    // Clear text selection khi click vào pane (background)
     const selection = window.getSelection();
     if (selection) {
       selection.removeAllRanges();

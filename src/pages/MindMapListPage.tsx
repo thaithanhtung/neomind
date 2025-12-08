@@ -4,7 +4,7 @@ import { LoadingOverlay } from '@/shared/components/LoadingOverlay';
 import { MindMapList } from '@/features/mindmap/components/MindMapList';
 import { useMindMapRedux } from '@/features/mindmap/hooks/useMindMapRedux';
 import { useAuthRedux } from '@/features/auth/hooks/useAuthRedux';
-import { AuthPage } from '@/features/auth/components';
+import { AuthPage, EmailConfirmationPage } from '@/features/auth/components';
 
 export const MindMapListPage = () => {
   const navigate = useNavigate();
@@ -27,6 +27,12 @@ export const MindMapListPage = () => {
   // Hiển thị trang đăng nhập nếu chưa đăng nhập
   if (!user) {
     return <AuthPage />;
+  }
+
+  // Kiểm tra email đã được confirm chưa
+  // Nếu chưa confirm thì hiển thị trang thông báo
+  if (user && !user.email_confirmed_at && user.email) {
+    return <EmailConfirmationPage email={user.email} />;
   }
 
   const handleCreateNew = async () => {

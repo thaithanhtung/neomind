@@ -138,7 +138,7 @@ export const ContentDisplay = ({
         }}
       />
 
-      {showAddButton && selectedText && (
+      {showAddButton && selectedText && !showPromptModal && (
         <AddButton position={buttonPosition} onClick={handleAddButtonClick} />
       )}
 

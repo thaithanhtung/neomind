@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { SelectedText } from '@/features/mindmap/types';
 
 interface UseTextSelectionProps {
@@ -20,10 +20,12 @@ export const useTextSelection = ({
     top: 0,
     left: 0,
   });
+  const savedRangeRef = useRef<Range | null>(null);
 
   const handleCancel = useCallback(() => {
     setShowAddButton(false);
     setSelectedText(null);
+    savedRangeRef.current = null;
     window.getSelection()?.removeAllRanges();
   }, []);
 
@@ -134,7 +136,27 @@ export const useTextSelection = ({
           nodeId,
         });
 
+        // Lưu range để có thể restore lại nếu bị mất
+        savedRangeRef.current = range.cloneRange();
+        
         setShowAddButton(true);
+        
+        // Đảm bảo selection vẫn được giữ sau khi button hiển thị
+        // Restore selection nếu bị mất do event nào đó
+        setTimeout(() => {
+          const currentSelection = window.getSelection();
+          if (!currentSelection || currentSelection.rangeCount === 0) {
+            // Restore selection từ saved range
+            if (savedRangeRef.current && contentRef.current) {
+              try {
+                currentSelection?.removeAllRanges();
+                currentSelection?.addRange(savedRangeRef.current.cloneRange());
+              } catch (e) {
+                // Ignore errors khi restore selection
+              }
+            }
+          }
+        }, 100);
       }, 50); // Giảm delay xuống 50ms
     };
 
@@ -157,46 +179,61 @@ export const useTextSelection = ({
         return;
       }
 
-      // Không clear nếu đang có selection trong content
-      const selection = window.getSelection();
-      if (selection && selection.rangeCount > 0) {
-        const range = selection.getRangeAt(0);
-        if (
-          range.toString().trim().length > 0 &&
-          contentRef.current &&
-          (contentRef.current.contains(range.commonAncestorContainer) ||
-            contentRef.current.contains(range.startContainer) ||
-            contentRef.current.contains(range.endContainer))
-        ) {
+      // Đợi một chút để đảm bảo text selection đã hoàn thành
+      setTimeout(() => {
+        const selection = window.getSelection();
+        
+        // Nếu click bên ngoài contentRef, luôn clear selection và ẩn button
+        if (contentRef.current && !contentRef.current.contains(target)) {
+          window.getSelection()?.removeAllRanges();
+          handleCancel();
           return;
         }
-      }
 
-      // Chỉ clear nếu click bên ngoài contentRef và không phải đang select text
-      if (contentRef.current && !contentRef.current.contains(target)) {
-        // Đợi một chút để đảm bảo text selection đã hoàn thành
-        setTimeout(() => {
-          const currentSelection = window.getSelection();
-          if (!currentSelection || currentSelection.rangeCount === 0) {
-            handleCancel();
+        // Nếu click vào contentRef nhưng không có selection hoặc selection rỗng
+        // thì cũng clear selection và ẩn button
+        if (contentRef.current && contentRef.current.contains(target)) {
+          if (!selection || selection.rangeCount === 0 || selection.toString().trim().length === 0) {
+            // Chỉ clear nếu không đang trong quá trình drag
+            const isDragging = (event.target as HTMLElement)?.closest('.react-flow__node') !== null;
+            if (!isDragging) {
+              window.getSelection()?.removeAllRanges();
+              handleCancel();
+            }
           }
-        }, 100);
-      }
+        }
+      }, 50); // Delay để đảm bảo selection đã được set
     };
 
     // Sử dụng capture phase để handle trước
     document.addEventListener('mouseup', handleMouseUp, true);
-    // Sử dụng timeout để không conflict với mouseup
-    document.addEventListener('click', handleClickOutside, true);
+    // Sử dụng click với delay để không conflict với mouseup và text selection
+    document.addEventListener('click', handleClickOutside, false);
 
     return () => {
       document.removeEventListener('mouseup', handleMouseUp, true);
-      document.removeEventListener('click', handleClickOutside, true);
+      document.removeEventListener('click', handleClickOutside, false);
     };
-  }, [nodeId, content, handleCancel, contentRef, modalRef]);
+  }, [nodeId, content, handleCancel, contentRef, modalRef, showAddButton]);
 
   useEffect(() => {
     if (showAddButton && contentRef.current) {
+      // Đảm bảo selection được giữ khi button hiển thị
+      const preserveSelection = () => {
+        const selection = window.getSelection();
+        if (!selection || selection.rangeCount === 0) {
+          // Restore selection từ saved range nếu bị mất
+          if (savedRangeRef.current) {
+            try {
+              selection?.removeAllRanges();
+              selection?.addRange(savedRangeRef.current.cloneRange());
+            } catch (e) {
+              // Ignore errors khi restore selection
+            }
+          }
+        }
+      };
+
       const updatePosition = () => {
         const selection = window.getSelection();
         if (selection && selection.rangeCount > 0) {
@@ -245,15 +282,27 @@ export const useTextSelection = ({
             top: buttonTop,
             left: buttonLeft,
           });
+        } else {
+          // Nếu selection bị mất, restore lại
+          preserveSelection();
         }
       };
+
+      // Kiểm tra và preserve selection định kỳ khi button hiển thị
+      const intervalId = setInterval(preserveSelection, 100);
 
       const scrollContainer = contentRef.current.closest('.overflow-y-auto');
       if (scrollContainer) {
         scrollContainer.addEventListener('scroll', updatePosition);
-        return () =>
+        return () => {
+          clearInterval(intervalId);
           scrollContainer.removeEventListener('scroll', updatePosition);
+        };
       }
+      
+      return () => {
+        clearInterval(intervalId);
+      };
     }
   }, [showAddButton, contentRef]);
 

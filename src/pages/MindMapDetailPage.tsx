@@ -8,7 +8,7 @@ import { MindMap } from '@/features/mindmap/components/MindMap';
 import { MindMapProvider } from '@/features/mindmap/context';
 import { useMindMapRedux } from '@/features/mindmap/hooks/useMindMapRedux';
 import { useAuthRedux } from '@/features/auth/hooks/useAuthRedux';
-import { AuthPage } from '@/features/auth/components';
+import { AuthPage, EmailConfirmationPage } from '@/features/auth/components';
 
 export const MindMapDetailPage = () => {
   const { id } = useParams<{ id: string }>();
@@ -63,6 +63,12 @@ export const MindMapDetailPage = () => {
   // Hiển thị trang đăng nhập nếu chưa đăng nhập
   if (!user) {
     return <AuthPage />;
+  }
+
+  // Kiểm tra email đã được confirm chưa
+  // Nếu chưa confirm thì hiển thị trang thông báo
+  if (user && !user.email_confirmed_at && user.email) {
+    return <EmailConfirmationPage email={user.email} />;
   }
 
   const handleTopicSubmit = async (topic: string) => {

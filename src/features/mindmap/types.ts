@@ -6,6 +6,7 @@ export interface NodeData {
   parentId?: string;
   width?: number;
   height?: number;
+  isLoading?: boolean;
 }
 
 export interface SelectedText {
