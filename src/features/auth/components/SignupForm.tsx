@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useAuthRedux } from '../hooks/useAuthRedux';
 import { Mail, Lock, Loader2 } from 'lucide-react';
 import { analytics } from '@/shared/utils/analytics';
+import { identifyHotjarUser, trackHotjarEvent } from '@/shared/utils/hotjar';
 
 export const SignupForm = () => {
   const [email, setEmail] = useState('');
@@ -33,6 +34,18 @@ export const SignupForm = () => {
       setSuccess(true);
       // Track signup event
       analytics.trackSignup();
+      const payload = result.payload as { user: any; error: any } | undefined;
+      const user = payload?.user;
+      if (user && !payload?.error) {
+        // Identify user trong Hotjar
+        identifyHotjarUser(user.id, {
+          email: user.email,
+        });
+        // Track signup event trong Hotjar
+        trackHotjarEvent('user_signup', {
+          email: user.email,
+        });
+      }
     }
   };
 
