@@ -1,14 +1,25 @@
-import { memo, useState } from 'react';
+import { memo, useState, useRef, useEffect } from 'react';
 import { Handle, Position, NodeProps, NodeResizeControl } from 'reactflow';
-import { Maximize2, Sparkles, Zap, Brain, Loader2, Trash2 } from 'lucide-react';
+import {
+  Maximize2,
+  Sparkles,
+  Zap,
+  Brain,
+  Loader2,
+  Trash2,
+  Volume2,
+  VolumeX,
+} from 'lucide-react';
 import { NodeData } from '@/features/mindmap/types';
 import { useMindMapContext } from '@/features/mindmap/context';
-import {
-  LEVEL_COLORS,
-  BORDER_COLORS,
-} from '@/features/mindmap/constants/nodeColors';
+import { LEVEL_COLORS } from '@/features/mindmap/constants/nodeColors';
 import { NodeTitle } from './NodeTitle';
 import { NodeContent } from './NodeContent';
+import { useUserSettings } from '@/shared/hooks/useUserSettings';
+import {
+  getColorTemplateById,
+  getDefaultColorTemplate,
+} from '@/shared/utils/nodeColorTemplates';
 
 interface CustomNodeProps extends NodeProps {
   data: NodeData;
@@ -18,7 +29,19 @@ export const CustomNode = memo(({ data, selected }: CustomNodeProps) => {
   const { onTextSelected, highlightedTexts, onDeleteNode } =
     useMindMapContext();
   const highlights = highlightedTexts?.get(data.id) || [];
+  const { settings } = useUserSettings();
   const [isHovered, setIsHovered] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const speechSynthesisRef = useRef<SpeechSynthesisUtterance | null>(null);
+
+  // Cleanup khi component unmount
+  useEffect(() => {
+    return () => {
+      if (speechSynthesisRef.current) {
+        window.speechSynthesis.cancel();
+      }
+    };
+  }, []);
 
   const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -27,9 +50,70 @@ export const CustomNode = memo(({ data, selected }: CustomNodeProps) => {
     }
   };
 
-  const colorClass = LEVEL_COLORS[data.level % LEVEL_COLORS.length];
+  // Hàm để extract text từ HTML
+  const extractTextFromHTML = (html: string): string => {
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = html;
+    return tempDiv.textContent || tempDiv.innerText || '';
+  };
+
+  const handleSpeak = (e: React.MouseEvent) => {
+    e.stopPropagation();
+
+    // Nếu đang đọc, dừng lại
+    if (isSpeaking) {
+      window.speechSynthesis.cancel();
+      setIsSpeaking(false);
+      return;
+    }
+
+    // Lấy text từ content (bao gồm cả title)
+    const titleText = data.label || '';
+    const contentText = extractTextFromHTML(data.content || '');
+    const fullText = `${titleText}. ${contentText}`.trim();
+
+    if (!fullText || fullText === '.') {
+      return;
+    }
+
+    // Tạo utterance
+    const utterance = new SpeechSynthesisUtterance(fullText);
+    utterance.lang = 'vi-VN'; // Tiếng Việt
+    utterance.rate = 1.0; // Tốc độ đọc
+    utterance.pitch = 1.0; // Cao độ
+    utterance.volume = 1.0; // Âm lượng
+
+    // Event handlers
+    utterance.onstart = () => {
+      setIsSpeaking(true);
+    };
+
+    utterance.onend = () => {
+      setIsSpeaking(false);
+      speechSynthesisRef.current = null;
+    };
+
+    utterance.onerror = () => {
+      setIsSpeaking(false);
+      speechSynthesisRef.current = null;
+    };
+
+    speechSynthesisRef.current = utterance;
+    window.speechSynthesis.speak(utterance);
+  };
+
+  // Lấy color template từ settings
+  const colorTemplate =
+    getColorTemplateById(settings.uiConfig.nodeColorTemplate) ||
+    getDefaultColorTemplate();
+  const colorClass =
+    colorTemplate.colors[data.level % colorTemplate.colors.length] ||
+    LEVEL_COLORS[data.level % LEVEL_COLORS.length];
+
+  // Sử dụng màu từ UI config
+  const borderColor = settings.uiConfig.nodeBorderColor;
   const borderClass = selected
-    ? BORDER_COLORS[data.level % BORDER_COLORS.length]
+    ? 'border-gray-500'
     : isHovered
     ? 'border-gray-400'
     : 'border-gray-300';
@@ -69,6 +153,7 @@ export const CustomNode = memo(({ data, selected }: CustomNodeProps) => {
       style={{
         width: `${nodeWidth}px`,
         height: `${nodeHeight}px`,
+        borderColor: borderColor,
       }}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
@@ -97,8 +182,26 @@ export const CustomNode = memo(({ data, selected }: CustomNodeProps) => {
       />
 
       <div className='p-4 h-full flex flex-col overflow-hidden'>
-        {/* Level indicator và Delete button */}
+        {/* Level indicator và Action buttons */}
         <div className='absolute top-3 right-3 flex items-center gap-2 z-30'>
+          {/* Speak button - chỉ hiển thị nếu tính năng được bật */}
+          {settings.enableTextToSpeech && !data.isLoading && data.content && (
+            <button
+              onClick={handleSpeak}
+              className={`p-2 rounded-lg shadow-lg transition-all duration-200 transform hover:scale-110 ${
+                isSpeaking
+                  ? 'bg-orange-500 hover:bg-orange-600 text-white'
+                  : 'bg-blue-500 hover:bg-blue-600 text-white opacity-90 hover:opacity-100'
+              }`}
+              title={isSpeaking ? 'Dừng đọc' : 'Đọc nội dung'}
+            >
+              {isSpeaking ? (
+                <VolumeX className='w-4 h-4' />
+              ) : (
+                <Volume2 className='w-4 h-4' />
+              )}
+            </button>
+          )}
           {/* Delete button - chỉ hiển thị khi selected hoặc hover */}
           {(selected || isHovered) && onDeleteNode && (
             <button

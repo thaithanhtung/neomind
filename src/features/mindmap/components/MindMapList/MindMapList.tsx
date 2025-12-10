@@ -8,12 +8,13 @@ import {
   FileText,
   Calendar,
   MoreVertical,
-  Sparkles,
   Clock,
   TrendingUp,
   Layers,
+  Tag,
 } from 'lucide-react';
 import { MindMap } from '@/features/mindmap/services/supabaseService';
+import { getTagsForMindMap } from '@/shared/utils/tags';
 
 interface MindMapListProps {
   mindMaps: MindMap[];
@@ -105,7 +106,7 @@ export const MindMapList = ({
             <div className='relative'>
               <div className='absolute inset-0 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-2xl blur-lg opacity-60 animate-pulse'></div>
               <div className='relative p-2.5 sm:p-3 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl sm:rounded-2xl shadow-xl'>
-                <Sparkles className='w-6 h-6 sm:w-8 sm:h-8 text-white' />
+                <Layers className='w-6 h-6 sm:w-8 sm:h-8 text-white' />
               </div>
             </div>
             <div data-tour='header-title'>
@@ -315,6 +316,28 @@ export const MindMapList = ({
                       >
                         {mindMap.title}
                       </h3>
+
+                      {/* Tags */}
+                      {getTagsForMindMap(mindMap.id).length > 0 && (
+                        <div className='flex flex-wrap gap-1.5 mb-3'>
+                          {getTagsForMindMap(mindMap.id)
+                            .slice(0, 3)
+                            .map((tag) => (
+                              <span
+                                key={tag}
+                                className='inline-flex items-center gap-1 px-2 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded text-xs'
+                              >
+                                <Tag className='w-3 h-3' />
+                                {tag}
+                              </span>
+                            ))}
+                          {getTagsForMindMap(mindMap.id).length > 3 && (
+                            <span className='inline-flex items-center px-2 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 rounded text-xs'>
+                              +{getTagsForMindMap(mindMap.id).length - 3}
+                            </span>
+                          )}
+                        </div>
+                      )}
 
                       {/* Date Info */}
                       <div className='flex items-center gap-3 text-xs'>

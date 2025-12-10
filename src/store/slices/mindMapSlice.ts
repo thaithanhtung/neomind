@@ -1,8 +1,17 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
+import { current } from '@reduxjs/toolkit';
 import { Node, Edge } from 'reactflow';
 import { NodeData, HighlightedText } from '@/features/mindmap/types';
 import { mindMapService } from '@/features/mindmap/services/supabaseService';
 import type { MindMap } from '@/features/mindmap/services/supabaseService';
+
+interface HistorySnapshot {
+  nodes: Node<NodeData>[];
+  edges: Edge[];
+  highlightedTexts:
+    | Array<[string, HighlightedText[]]>
+    | Map<string, HighlightedText[]>;
+}
 
 interface MindMapState {
   nodes: Node<NodeData>[];
@@ -13,6 +22,10 @@ interface MindMapState {
   mindMapId: string | null;
   mindMaps: MindMap[]; // Danh sách tất cả mind maps của user
   isLoadingMindMaps: boolean;
+  // History for undo/redo
+  history: HistorySnapshot[];
+  historyIndex: number;
+  maxHistorySize: number;
 }
 
 const initialState: MindMapState = {
@@ -24,9 +37,52 @@ const initialState: MindMapState = {
   mindMapId: null,
   mindMaps: [],
   isLoadingMindMaps: false,
+  history: [],
+  historyIndex: -1,
+  maxHistorySize: 50,
 };
 
 // Note: Map serialization is handled by Redux middleware configuration
+
+// Helper function để convert Map sang array để serialize
+const mapToArray = (
+  map: Map<string, HighlightedText[]>
+): Array<[string, HighlightedText[]]> => {
+  return Array.from(map.entries());
+};
+
+// Helper function để convert array về Map
+const arrayToMap = (
+  arr: Array<[string, HighlightedText[]]>
+): Map<string, HighlightedText[]> => {
+  return new Map(arr);
+};
+
+// Helper function để tạo snapshot
+// Lưu ý: Hàm này được gọi từ bên trong Immer producer, nên cần dùng current() để lấy giá trị thực
+const createSnapshot = (state: MindMapState): HistorySnapshot => {
+  // Dùng current() để lấy giá trị thực từ Immer proxy, tránh lỗi khi serialize Map
+  const currentState = current(state);
+  const highlightedTextsArray = mapToArray(currentState.highlightedTexts);
+
+  return {
+    nodes: JSON.parse(JSON.stringify(currentState.nodes)),
+    edges: JSON.parse(JSON.stringify(currentState.edges)),
+    highlightedTexts: highlightedTextsArray,
+  };
+};
+
+// Helper function để apply snapshot
+const applySnapshot = (
+  state: MindMapState,
+  snapshot: HistorySnapshot
+): void => {
+  state.nodes = JSON.parse(JSON.stringify(snapshot.nodes));
+  state.edges = JSON.parse(JSON.stringify(snapshot.edges));
+  state.highlightedTexts = arrayToMap(
+    snapshot.highlightedTexts as Array<[string, HighlightedText[]]>
+  );
+};
 
 // Async thunks
 export const loadMindMapData = createAsyncThunk<
@@ -158,12 +214,61 @@ const mindMapSlice = createSlice({
       state.edges = [];
       state.highlightedTexts = new Map();
       state.mindMapId = null;
+      state.history = [];
+      state.historyIndex = -1;
     },
     setMindMapId: (state, action: PayloadAction<string | null>) => {
       state.mindMapId = action.payload;
+      // Reset history khi chuyển mind map
+      if (action.payload !== state.mindMapId) {
+        state.history = [];
+        state.historyIndex = -1;
+      }
     },
     setLoadingData: (state, action: PayloadAction<boolean>) => {
       state.isLoadingData = action.payload;
+    },
+    // History actions
+    saveToHistory: (state) => {
+      // Chỉ save nếu có thay đổi thực sự
+      if (state.nodes.length === 0 && state.history.length === 0) {
+        return;
+      }
+
+      const snapshot = createSnapshot(state);
+
+      // Xóa các snapshot sau index hiện tại (khi đã undo rồi làm action mới)
+      if (state.historyIndex < state.history.length - 1) {
+        state.history = state.history.slice(0, state.historyIndex + 1);
+      }
+
+      // Thêm snapshot mới
+      state.history.push(snapshot);
+      state.historyIndex = state.history.length - 1;
+
+      // Giới hạn kích thước history
+      if (state.history.length > state.maxHistorySize) {
+        state.history.shift();
+        state.historyIndex = state.history.length - 1;
+      }
+    },
+    undo: (state) => {
+      if (state.historyIndex > 0) {
+        state.historyIndex--;
+        const snapshot = state.history[state.historyIndex];
+        applySnapshot(state, snapshot);
+      }
+    },
+    redo: (state) => {
+      if (state.historyIndex < state.history.length - 1) {
+        state.historyIndex++;
+        const snapshot = state.history[state.historyIndex];
+        applySnapshot(state, snapshot);
+      }
+    },
+    clearHistory: (state) => {
+      state.history = [];
+      state.historyIndex = -1;
     },
   },
   extraReducers: (builder) => {
@@ -178,6 +283,9 @@ const mindMapSlice = createSlice({
         state.highlightedTexts = action.payload.highlightedTexts;
         state.mindMapId = action.payload.mindMapId;
         state.isLoadingData = false;
+        // Reset history khi load data mới
+        state.history = [];
+        state.historyIndex = -1;
       })
       .addCase(loadMindMapData.rejected, (state) => {
         state.isLoadingData = false;
@@ -252,6 +360,10 @@ export const {
   clearMindMap,
   setMindMapId,
   setLoadingData,
+  saveToHistory,
+  undo,
+  redo,
+  clearHistory,
 } = mindMapSlice.actions;
 
 export default mindMapSlice.reducer;

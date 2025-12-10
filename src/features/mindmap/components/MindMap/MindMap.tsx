@@ -1,5 +1,5 @@
-import { useMemo, useCallback } from 'react';
-import { NodeProps } from 'reactflow';
+import { useMemo, useCallback, useRef } from 'react';
+import { NodeProps, ReactFlowInstance } from 'reactflow';
 import ReactFlow, {
   Node,
   Edge,
@@ -15,6 +15,7 @@ import ReactFlow, {
 import 'reactflow/dist/style.css';
 import { NodeData } from '@/features/mindmap/types';
 import { CustomNode } from '@/features/mindmap/components/Node';
+import { useUserSettings } from '@/shared/hooks/useUserSettings';
 
 // Định nghĩa nodeTypes bên ngoài component để tránh warning
 const nodeTypes: NodeTypes = {
@@ -30,6 +31,7 @@ interface MindMapProps {
   onEdgesChange: (changes: EdgeChange[]) => void;
   onConnect: (connection: Connection) => void;
   onNodeClick?: (event: React.MouseEvent, node: Node) => void;
+  onReactFlowInstanceReady?: (instance: ReactFlowInstance) => void;
 }
 
 export const MindMap = ({
@@ -39,12 +41,32 @@ export const MindMap = ({
   onEdgesChange,
   onConnect,
   onNodeClick,
+  onReactFlowInstanceReady,
 }: MindMapProps) => {
+  const reactFlowWrapper = useRef<HTMLDivElement>(null);
+  const { settings } = useUserSettings();
+  const uiConfig = settings.uiConfig;
+
+  const handleReactFlowInit = useCallback(
+    (instance: ReactFlowInstance) => {
+      if (onReactFlowInstanceReady) {
+        onReactFlowInstanceReady(instance);
+      }
+    },
+    [onReactFlowInstanceReady]
+  );
+
+  const backgroundVariantMap: Record<string, BackgroundVariant> = {
+    dots: BackgroundVariant.Dots,
+    lines: BackgroundVariant.Lines,
+    cross: BackgroundVariant.Cross,
+  };
+
   const defaultEdgeOptions = useMemo(
     () => ({
       style: {
-        stroke: '#6366f1',
-        strokeWidth: 3,
+        stroke: uiConfig.edgeColor,
+        strokeWidth: uiConfig.edgeWidth,
         strokeDasharray: '0',
         strokeLinecap: 'round' as const,
       },
@@ -54,10 +76,10 @@ export const MindMap = ({
         type: MarkerType.ArrowClosed,
         width: 20,
         height: 20,
-        color: '#6366f1',
+        color: uiConfig.edgeColor,
       },
     }),
-    []
+    [uiConfig.edgeColor, uiConfig.edgeWidth]
   );
 
   const processedNodes = useMemo(() => {
@@ -66,6 +88,35 @@ export const MindMap = ({
       draggable: !node.selected,
     }));
   }, [nodes]);
+
+  // Cập nhật màu sắc cho tất cả edges khi UI config thay đổi
+  const processedEdges = useMemo(() => {
+    return edges.map((edge) => {
+      const existingStyle = edge.style || {};
+      const existingMarkerEnd = edge.markerEnd || {};
+
+      return {
+        ...edge,
+        style: {
+          ...(typeof existingStyle === 'object' && existingStyle !== null
+            ? existingStyle
+            : {}),
+          stroke: uiConfig.edgeColor,
+          strokeWidth: uiConfig.edgeWidth,
+        },
+        markerEnd: {
+          ...(typeof existingMarkerEnd === 'object' &&
+          existingMarkerEnd !== null
+            ? existingMarkerEnd
+            : {}),
+          type: MarkerType.ArrowClosed,
+          width: 20,
+          height: 20,
+          color: uiConfig.edgeColor,
+        },
+      };
+    });
+  }, [edges, uiConfig.edgeColor, uiConfig.edgeWidth]);
 
   const handleNodeDragStart = useCallback(
     (event: React.MouseEvent, node: Node) => {
@@ -95,10 +146,10 @@ export const MindMap = ({
   }, []);
 
   return (
-    <div className='w-full h-full'>
+    <div className='w-full h-full' ref={reactFlowWrapper}>
       <ReactFlow
         nodes={processedNodes}
-        edges={edges}
+        edges={processedEdges}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
@@ -110,11 +161,15 @@ export const MindMap = ({
         onNodeDragStart={handleNodeDragStart}
         onNodeClick={onNodeClick}
         onPaneClick={handlePaneClick}
+        onInit={handleReactFlowInit}
       >
         <Background
-          color='#e5e7eb'
+          color={uiConfig.backgroundColor}
           gap={20}
-          variant={BackgroundVariant.Dots}
+          variant={
+            backgroundVariantMap[uiConfig.backgroundVariant] ||
+            BackgroundVariant.Dots
+          }
           size={1.5}
         />
         <Controls

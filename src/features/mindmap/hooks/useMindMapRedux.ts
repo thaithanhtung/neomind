@@ -26,6 +26,9 @@ import {
   removeNode,
   setMindMapId,
   setLoadingData,
+  saveToHistory,
+  undo as undoAction,
+  redo as redoAction,
 } from '@/store/slices/mindMapSlice';
 import {
   NodeData,
@@ -56,6 +59,8 @@ export const useMindMapRedux = () => {
     mindMapId,
     mindMaps,
     isLoadingMindMaps,
+    history,
+    historyIndex,
   } = useAppSelector((state) => state.mindMap);
 
   const creatingNodeRef = useRef<Set<string>>(new Set());
@@ -193,6 +198,11 @@ export const useMindMapRedux = () => {
         });
 
         dispatch(setNodes(nodesWithData));
+
+        // Save to history nếu có user action quan trọng
+        if (hasUserAction) {
+          dispatch(saveToHistory());
+        }
       });
     },
     [dispatch]
@@ -396,6 +406,7 @@ export const useMindMapRedux = () => {
         // Thêm node và edge với loading state
         dispatch(addNode(newNode));
         dispatch(addEdgeAction(newEdge));
+        dispatch(saveToHistory());
 
         // Generate content
         const content = await generateRelatedContent(
@@ -548,6 +559,7 @@ export const useMindMapRedux = () => {
 
       // Thêm node với loading state - node sẽ hiển thị loading spinner
       dispatch(addNode(newNode));
+      dispatch(saveToHistory());
 
       try {
         // Generate content từ OpenAI - đợi API response trước khi cập nhật
@@ -577,6 +589,17 @@ export const useMindMapRedux = () => {
     [mindMapId, dispatch]
   );
 
+  const handleUndo = useCallback(() => {
+    dispatch(undoAction());
+  }, [dispatch]);
+
+  const handleRedo = useCallback(() => {
+    dispatch(redoAction());
+  }, [dispatch]);
+
+  const canUndo = historyIndex > 0;
+  const canRedo = historyIndex < history.length - 1;
+
   return {
     nodes,
     edges,
@@ -598,5 +621,9 @@ export const useMindMapRedux = () => {
     onSelectMindMap: handleSelectMindMap,
     onUpdateMindMapTitle: handleUpdateTitle,
     onDeleteMindMap: handleDeleteMindMap,
+    undo: handleUndo,
+    redo: handleRedo,
+    canUndo,
+    canRedo,
   };
 };

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Header } from '@/shared/components/Header';
 import { LoadingOverlay } from '@/shared/components/LoadingOverlay';
@@ -15,6 +15,9 @@ import {
   mindMapDetailTourSteps,
   mindMapDetailWithNodesTourSteps,
 } from '@/shared/utils/tourSteps';
+import { TagInput } from '@/shared/components/TagInput';
+import { useKeyboardShortcuts } from '@/shared/hooks/useKeyboardShortcuts';
+import { ReactFlowInstance } from 'reactflow';
 
 export const MindMapDetailPage = () => {
   const { id } = useParams<{ id: string }>();
@@ -37,8 +40,45 @@ export const MindMapDetailPage = () => {
     handleDeleteNode,
     onCreateNode,
     onSelectMindMap,
+    undo,
+    redo,
   } = useMindMapRedux();
   const { startTour } = useTour('mindmap-detail');
+  const reactFlowInstanceRef = useRef<ReactFlowInstance | null>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  // Lấy selected node để xóa
+  const selectedNode = nodes.find((n) => n.selected);
+
+  // Keyboard shortcuts
+  useKeyboardShortcuts({
+    onUndo: undo,
+    onRedo: redo,
+    onDelete: () => {
+      if (selectedNode) {
+        handleDeleteNode(selectedNode.id);
+      }
+    },
+    onSearch: () => {
+      if (searchInputRef.current) {
+        searchInputRef.current.focus();
+      }
+    },
+    onNewNode: () => {
+      if (!showInput) {
+        setShowInput(true);
+      }
+      // Focus vào input sau khi hiển thị
+      setTimeout(() => {
+        const topicInput = document.querySelector(
+          '[data-tour="topic-input-field"]'
+        ) as HTMLInputElement;
+        if (topicInput) {
+          topicInput.focus();
+        }
+      }, 100);
+    },
+  });
 
   // Sync URL với selected mind map
   useEffect(() => {
@@ -131,7 +171,7 @@ export const MindMapDetailPage = () => {
   };
 
   return (
-    <div className='w-full h-screen flex flex-col bg-gradient-to-br from-gray-50 to-gray-100'>
+    <div className='w-full h-screen flex flex-col bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800'>
       <Header
         nodesCount={nodes.length}
         showInput={showInput}
@@ -145,10 +185,17 @@ export const MindMapDetailPage = () => {
 
       {showInput && (
         <div
-          className='px-6 py-6 bg-white border-b border-gray-200 z-10'
+          className='px-6 py-6 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 z-10'
           data-tour='topic-input'
         >
           <TopicInput onSubmit={handleTopicSubmit} isLoading={isLoading} />
+        </div>
+      )}
+
+      {/* Tags Input */}
+      {currentMindMapId && (
+        <div className='px-6 py-4 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 z-10'>
+          <TagInput mindMapId={currentMindMapId} />
         </div>
       )}
 
@@ -184,6 +231,9 @@ export const MindMapDetailPage = () => {
                 onEdgesChange={onEdgesChange}
                 onConnect={onConnect}
                 onNodeClick={handleNodeClick}
+                onReactFlowInstanceReady={(instance) => {
+                  reactFlowInstanceRef.current = instance;
+                }}
               />
             </MindMapProvider>
           </div>
