@@ -1,6 +1,7 @@
 import { Brain, LogOut, User, FolderOpen, Home } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthRedux } from '@/features/auth/hooks/useAuthRedux';
+import { analytics } from '@/shared/utils/analytics';
 
 interface HeaderProps {
   nodesCount?: number;
@@ -17,6 +18,7 @@ export const Header = (props: HeaderProps) => {
   const handleSignOut = async () => {
     if (confirm('Bạn có chắc muốn đăng xuất?')) {
       await signOut();
+      analytics.trackLogout();
     }
   };
 
@@ -36,7 +38,10 @@ export const Header = (props: HeaderProps) => {
         <div className='flex items-center gap-4'>
           {onShowMindMapList ? (
             <button
-              onClick={onShowMindMapList}
+              onClick={() => {
+                onShowMindMapList();
+                analytics.trackMindMapListView();
+              }}
               className='flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors'
               title='Quản lý Mind Maps'
             >
@@ -45,7 +50,10 @@ export const Header = (props: HeaderProps) => {
             </button>
           ) : (
             <button
-              onClick={() => navigate('/')}
+              onClick={() => {
+                navigate('/');
+                analytics.trackMindMapListView();
+              }}
               className='flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors'
               title='Về trang chủ'
             >

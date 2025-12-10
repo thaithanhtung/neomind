@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useAuthRedux } from '../hooks/useAuthRedux';
 import { Mail, Lock, Loader2 } from 'lucide-react';
+import { analytics } from '@/shared/utils/analytics';
 
 export const SignupForm = () => {
   const [email, setEmail] = useState('');
@@ -27,9 +28,11 @@ export const SignupForm = () => {
     }
 
     const result = await signUp(email, password);
-    
+
     if (result.type.includes('fulfilled')) {
       setSuccess(true);
+      // Track signup event
+      analytics.trackSignup();
     }
   };
 
@@ -50,7 +53,8 @@ export const SignupForm = () => {
               Chúng tôi đã gửi email xác nhận đến <strong>{email}</strong>
             </p>
             <p className='text-sm text-gray-500'>
-              Vui lòng kiểm tra email và click vào link xác nhận để hoàn tất đăng ký.
+              Vui lòng kiểm tra email và click vào link xác nhận để hoàn tất
+              đăng ký.
             </p>
           </div>
         </div>
@@ -73,7 +77,10 @@ export const SignupForm = () => {
           )}
 
           <div>
-            <label htmlFor='email' className='block text-sm font-medium text-gray-700 mb-2'>
+            <label
+              htmlFor='email'
+              className='block text-sm font-medium text-gray-700 mb-2'
+            >
               Email
             </label>
             <div className='relative'>
@@ -92,7 +99,10 @@ export const SignupForm = () => {
           </div>
 
           <div>
-            <label htmlFor='password' className='block text-sm font-medium text-gray-700 mb-2'>
+            <label
+              htmlFor='password'
+              className='block text-sm font-medium text-gray-700 mb-2'
+            >
               Mật khẩu
             </label>
             <div className='relative'>
@@ -112,7 +122,10 @@ export const SignupForm = () => {
           </div>
 
           <div>
-            <label htmlFor='confirmPassword' className='block text-sm font-medium text-gray-700 mb-2'>
+            <label
+              htmlFor='confirmPassword'
+              className='block text-sm font-medium text-gray-700 mb-2'
+            >
               Xác nhận mật khẩu
             </label>
             <div className='relative'>
@@ -150,4 +163,3 @@ export const SignupForm = () => {
     </div>
   );
 };
-

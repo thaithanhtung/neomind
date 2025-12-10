@@ -42,6 +42,7 @@ import {
   getNodePosition,
   getInitialNodePosition,
 } from '@/features/mindmap/utils/nodeUtils';
+import { analytics } from '@/shared/utils/analytics';
 
 export const useMindMapRedux = () => {
   const dispatch = useAppDispatch();
@@ -181,6 +182,11 @@ export const useMindMapRedux = () => {
 
   const onConnect = useCallback(
     (connection: Connection) => {
+      // Track node connect
+      if (connection.source && connection.target) {
+        analytics.trackNodeConnect(connection.source, connection.target);
+      }
+
       const newEdge = addEdge(connection, edges);
       dispatch(setEdges(newEdge));
     },
@@ -189,6 +195,9 @@ export const useMindMapRedux = () => {
 
   const handleNodeClick = useCallback(
     (_event: React.MouseEvent, node: Node) => {
+      // Track node click
+      analytics.trackNodeClick(node.id);
+
       // Lấy nodes hiện tại từ store thay vì từ closure để tránh stale data
       dispatch((dispatch, getState) => {
         const currentNodes = getState().mindMap.nodes;
@@ -211,6 +220,9 @@ export const useMindMapRedux = () => {
       ) {
         return;
       }
+
+      // Track node delete
+      analytics.trackNodeDelete(nodeId);
 
       dispatch((dispatch, getState) => {
         const state = getState().mindMap;
@@ -304,6 +316,9 @@ export const useMindMapRedux = () => {
 
       creatingNodeRef.current.add(requestKey);
 
+      // Track text select
+      analytics.trackTextSelect(selected.text.length);
+
       let newNodeId: string | null = null;
 
       try {
@@ -369,6 +384,9 @@ export const useMindMapRedux = () => {
 
         dispatch(updateNode(updatedNode));
 
+        // Track node create from text selection
+        analytics.trackNodeCreate(newNodeId, nodeLabel);
+
         const highlightedText: HighlightedText = {
           startIndex: selected.startIndex,
           endIndex: selected.endIndex,
@@ -400,6 +418,8 @@ export const useMindMapRedux = () => {
         createNewMindMap({ userId: user.id, title })
       );
       if (createNewMindMap.fulfilled.match(result)) {
+        // Track mind map create
+        analytics.trackMindMapCreate(result.payload.mindMapId);
         // Mind map đã được tạo và selected tự động
         return result.payload.mindMapId;
       }
@@ -412,6 +432,8 @@ export const useMindMapRedux = () => {
     (selectedMindMapId: string) => {
       if (selectedMindMapId !== mindMapId) {
         dispatch(setMindMapId(selectedMindMapId));
+        // Track mind map select
+        analytics.trackMindMapSelect(selectedMindMapId);
       }
     },
     [mindMapId, dispatch]
@@ -432,6 +454,9 @@ export const useMindMapRedux = () => {
         await dispatch(
           deleteMindMapAction({ mindMapId: mindMapIdToDelete })
         ).unwrap();
+
+        // Track mind map delete
+        analytics.trackMindMapDelete(mindMapIdToDelete);
 
         // Tính toán remaining maps bằng cách loại bỏ mind map đã xóa
         // (Reducer đã cập nhật state, nhưng component chưa re-render nên dùng giá trị hiện tại)
@@ -504,6 +529,9 @@ export const useMindMapRedux = () => {
         };
 
         dispatch(updateNode(updatedNode));
+
+        // Track node create from topic input
+        analytics.trackNodeCreate(newNodeId, topic);
       } catch (error) {
         console.error('Error creating node:', error);
         // Xóa node nếu có lỗi

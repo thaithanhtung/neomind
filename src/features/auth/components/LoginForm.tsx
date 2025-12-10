@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useAuthRedux } from '../hooks/useAuthRedux';
 import { Mail, Lock, Loader2 } from 'lucide-react';
+import { analytics } from '@/shared/utils/analytics';
 
 export const LoginForm = () => {
   const [email, setEmail] = useState('');
@@ -9,7 +10,11 @@ export const LoginForm = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    await signIn(email, password);
+    const result = await signIn(email, password);
+    // Track login event nếu thành công
+    if (result.type.includes('fulfilled')) {
+      analytics.trackLogin();
+    }
   };
 
   return (
@@ -27,7 +32,10 @@ export const LoginForm = () => {
           )}
 
           <div>
-            <label htmlFor='email' className='block text-sm font-medium text-gray-700 mb-2'>
+            <label
+              htmlFor='email'
+              className='block text-sm font-medium text-gray-700 mb-2'
+            >
               Email
             </label>
             <div className='relative'>
@@ -46,7 +54,10 @@ export const LoginForm = () => {
           </div>
 
           <div>
-            <label htmlFor='password' className='block text-sm font-medium text-gray-700 mb-2'>
+            <label
+              htmlFor='password'
+              className='block text-sm font-medium text-gray-700 mb-2'
+            >
               Mật khẩu
             </label>
             <div className='relative'>
@@ -84,4 +95,3 @@ export const LoginForm = () => {
     </div>
   );
 };
-

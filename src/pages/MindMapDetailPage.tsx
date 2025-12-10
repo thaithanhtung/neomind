@@ -9,6 +9,7 @@ import { MindMapProvider } from '@/features/mindmap/context';
 import { useMindMapRedux } from '@/features/mindmap/hooks/useMindMapRedux';
 import { useAuthRedux } from '@/features/auth/hooks/useAuthRedux';
 import { AuthPage, EmailConfirmationPage } from '@/features/auth/components';
+import { analytics } from '@/shared/utils/analytics';
 
 export const MindMapDetailPage = () => {
   const { id } = useParams<{ id: string }>();
@@ -39,6 +40,13 @@ export const MindMapDetailPage = () => {
       onSelectMindMap(id);
     }
   }, [id, currentMindMapId, onSelectMindMap]);
+
+  // Track mind map view khi load trang
+  useEffect(() => {
+    if (id && !isLoadingData) {
+      analytics.trackMindMapView(id);
+    }
+  }, [id, isLoadingData]);
 
   // Sync URL khi currentMindMapId thay đổi (ví dụ: sau khi xóa mind map cuối cùng và tạo mới)
   useEffect(() => {
@@ -108,7 +116,10 @@ export const MindMapDetailPage = () => {
       <Header
         nodesCount={nodes.length}
         showInput={showInput}
-        onToggleInput={() => setShowInput(!showInput)}
+        onToggleInput={() => {
+          setShowInput(!showInput);
+          analytics.trackInputToggle(!showInput);
+        }}
         onShowMindMapList={handleShowMindMapList}
       />
 
@@ -155,4 +166,3 @@ export const MindMapDetailPage = () => {
     </div>
   );
 };
-
