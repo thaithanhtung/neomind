@@ -10,6 +10,11 @@ import { useMindMapRedux } from '@/features/mindmap/hooks/useMindMapRedux';
 import { useAuthRedux } from '@/features/auth/hooks/useAuthRedux';
 import { AuthPage, EmailConfirmationPage } from '@/features/auth/components';
 import { analytics } from '@/shared/utils/analytics';
+import { useTour } from '@/shared/hooks/useTour';
+import {
+  mindMapDetailTourSteps,
+  mindMapDetailWithNodesTourSteps,
+} from '@/shared/utils/tourSteps';
 
 export const MindMapDetailPage = () => {
   const { id } = useParams<{ id: string }>();
@@ -33,6 +38,7 @@ export const MindMapDetailPage = () => {
     onCreateNode,
     onSelectMindMap,
   } = useMindMapRedux();
+  const { startTour } = useTour('mindmap-detail');
 
   // Sync URL với selected mind map
   useEffect(() => {
@@ -111,6 +117,19 @@ export const MindMapDetailPage = () => {
     navigate('/');
   };
 
+  const handleStartTour = () => {
+    // Chọn tour steps dựa trên trạng thái hiện tại
+    // Nếu đã có nodes, không cần hướng dẫn về topic-input
+    const steps =
+      nodes.length > 0
+        ? mindMapDetailWithNodesTourSteps
+        : mindMapDetailTourSteps;
+
+    startTour({
+      steps,
+    });
+  };
+
   return (
     <div className='w-full h-screen flex flex-col bg-gradient-to-br from-gray-50 to-gray-100'>
       <Header
@@ -121,10 +140,14 @@ export const MindMapDetailPage = () => {
           analytics.trackInputToggle(!showInput);
         }}
         onShowMindMapList={handleShowMindMapList}
+        onStartTour={handleStartTour}
       />
 
       {showInput && (
-        <div className='px-6 py-6 bg-white border-b border-gray-200 z-10'>
+        <div
+          className='px-6 py-6 bg-white border-b border-gray-200 z-10'
+          data-tour='topic-input'
+        >
           <TopicInput onSubmit={handleTopicSubmit} isLoading={isLoading} />
         </div>
       )}
@@ -145,7 +168,10 @@ export const MindMapDetailPage = () => {
             <EmptyState />
           </div>
         ) : (
-          <div className='w-full h-full animate-fadeIn'>
+          <div
+            className='w-full h-full animate-fadeIn'
+            data-tour='mindmap-canvas'
+          >
             <MindMapProvider
               onTextSelected={handleTextSelected}
               highlightedTexts={highlightedTexts}

@@ -62,6 +62,7 @@ export const useMindMapRedux = () => {
   const saveTimeoutRef = useRef<NodeJS.Timeout>();
   const loadedUserIdRef = useRef<string | null>(null);
   const isLoadingRef = useRef(false);
+  const justLoadedRef = useRef(false); // Flag để skip auto-save ngay sau khi load
 
   // Load danh sách mind maps khi user thay đổi
   useEffect(() => {
@@ -97,8 +98,13 @@ export const useMindMapRedux = () => {
     }
 
     isLoadingRef.current = true;
+    justLoadedRef.current = true; // Set flag khi bắt đầu load
     dispatch(loadMindMapData(mindMapId)).finally(() => {
       isLoadingRef.current = false;
+      // Reset flag sau 2 giây để cho phép auto-save lại
+      setTimeout(() => {
+        justLoadedRef.current = false;
+      }, 2000);
     });
   }, [mindMapId, dispatch]);
 
@@ -116,7 +122,17 @@ export const useMindMapRedux = () => {
 
   // Auto-save với debounce
   useEffect(() => {
-    if (isLoadingData || !mindMapId || nodes.length === 0) {
+    // Skip auto-save nếu:
+    // - Đang load data
+    // - Chưa có mindMapId
+    // - Chưa có nodes
+    // - Vừa mới load data (trong vòng 2 giây)
+    if (
+      isLoadingData ||
+      !mindMapId ||
+      nodes.length === 0 ||
+      justLoadedRef.current
+    ) {
       return;
     }
 
@@ -125,7 +141,8 @@ export const useMindMapRedux = () => {
     }
 
     saveTimeoutRef.current = setTimeout(() => {
-      if (mindMapId) {
+      // Double check lại trước khi save
+      if (mindMapId && !justLoadedRef.current) {
         dispatch(
           saveMindMapData({
             mindMapId,
@@ -146,6 +163,15 @@ export const useMindMapRedux = () => {
 
   const onNodesChange = useCallback(
     (changes: NodeChange[]) => {
+      // Reset flag khi có user action rõ ràng (di chuyển node, resize node)
+      // Không reset cho các changes khác vì có thể đến từ nhiều nguồn
+      const hasUserAction = changes.some(
+        (c) => c.type === 'position' || c.type === 'dimensions'
+      );
+      if (hasUserAction) {
+        justLoadedRef.current = false;
+      }
+
       // Lấy nodes hiện tại từ store thay vì từ closure
       dispatch((dispatch, getState) => {
         const currentNodes = getState().mindMap.nodes;
@@ -182,6 +208,9 @@ export const useMindMapRedux = () => {
 
   const onConnect = useCallback(
     (connection: Connection) => {
+      // Reset flag khi có user action (kết nối node)
+      justLoadedRef.current = false;
+
       // Track node connect
       if (connection.source && connection.target) {
         analytics.trackNodeConnect(connection.source, connection.target);
@@ -361,6 +390,9 @@ export const useMindMapRedux = () => {
           type: 'smoothstep',
         };
 
+        // Reset flag khi có user action (tạo node từ text selection)
+        justLoadedRef.current = false;
+
         // Thêm node và edge với loading state
         dispatch(addNode(newNode));
         dispatch(addEdgeAction(newEdge));
@@ -510,6 +542,9 @@ export const useMindMapRedux = () => {
         },
         selected: false,
       };
+
+      // Reset flag khi có user action (tạo node từ topic input)
+      justLoadedRef.current = false;
 
       // Thêm node với loading state - node sẽ hiển thị loading spinner
       dispatch(addNode(newNode));

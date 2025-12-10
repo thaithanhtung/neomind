@@ -82,7 +82,10 @@ export const CustomNode = memo(({ data, selected }: CustomNodeProps) => {
           // maxWidth={800}
           // maxHeight={600}
         >
-          <div className='bg-gradient-to-br from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 rounded-full p-1.5 shadow-xl transition-all duration-200 cursor-nwse-resize transform hover:scale-110'>
+          <div
+            className='bg-gradient-to-br from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 rounded-full p-1.5 shadow-xl transition-all duration-200 cursor-nwse-resize transform hover:scale-110'
+            data-tour='node-resize'
+          >
             <Maximize2 className='w-3.5 h-3.5 text-white' />
           </div>
         </NodeResizeControl>

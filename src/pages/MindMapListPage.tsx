@@ -7,6 +7,8 @@ import { useMindMapRedux } from '@/features/mindmap/hooks/useMindMapRedux';
 import { useAuthRedux } from '@/features/auth/hooks/useAuthRedux';
 import { AuthPage, EmailConfirmationPage } from '@/features/auth/components';
 import { analytics } from '@/shared/utils/analytics';
+import { useTour } from '@/shared/hooks/useTour';
+import { mindMapListTourSteps } from '@/shared/utils/tourSteps';
 
 export const MindMapListPage = () => {
   const navigate = useNavigate();
@@ -20,11 +22,18 @@ export const MindMapListPage = () => {
     onUpdateMindMapTitle,
     onDeleteMindMap,
   } = useMindMapRedux();
+  const { startTour } = useTour('mindmap-list');
 
   // Track mind map list view
   useEffect(() => {
     analytics.trackMindMapListView();
   }, []);
+
+  const handleStartTour = () => {
+    startTour({
+      steps: mindMapListTourSteps,
+    });
+  };
 
   // Hiển thị loading khi đang check auth
   if (authLoading) {
@@ -59,7 +68,12 @@ export const MindMapListPage = () => {
 
   return (
     <div className='w-full h-screen flex flex-col bg-gradient-to-br from-gray-50 to-gray-100'>
-      <Header nodesCount={0} showInput={false} onToggleInput={() => {}} />
+      <Header
+        nodesCount={0}
+        showInput={false}
+        onToggleInput={() => {}}
+        onStartTour={handleStartTour}
+      />
 
       <div className='flex-1 overflow-auto p-6'>
         <div className='max-w-7xl mx-auto'>

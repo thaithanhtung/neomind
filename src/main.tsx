@@ -4,6 +4,7 @@ import { Provider } from 'react-redux';
 import { store } from './store';
 import App from './App.tsx';
 import './index.css';
+import 'intro.js/minified/introjs.min.css';
 import { initGA } from './shared/utils/analytics';
 
 // Khởi tạo Google Analytics

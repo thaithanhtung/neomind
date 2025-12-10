@@ -96,6 +96,7 @@ export const ContentDisplay = ({
   return (
     <div
       className='relative w-full h-full'
+      data-tour='node-content'
       onMouseDown={(e) => {
         // Chỉ stopPropagation nếu không phải đang select text
         const selection = window.getSelection();

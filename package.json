@@ -12,6 +12,8 @@
     "@reactflow/node-resizer": "^2.2.14",
     "@reduxjs/toolkit": "^2.11.0",
     "@supabase/supabase-js": "^2.86.2",
+    "@types/intro.js": "^5.1.5",
+    "intro.js": "^8.3.2",
     "lucide-react": "^0.294.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",

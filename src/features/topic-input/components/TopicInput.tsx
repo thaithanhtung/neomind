@@ -30,6 +30,7 @@ export const TopicInput = ({ onSubmit, isLoading }: TopicInputProps) => {
           placeholder='Nhập chủ đề hoặc câu hỏi của bạn...'
           className='w-full px-6 py-4 pr-14 text-lg rounded-2xl border-2 border-gray-200 focus:border-primary-500 focus:outline-none transition-colors shadow-sm'
           disabled={isLoading}
+          data-tour='topic-input-field'
         />
         <button
           type='submit'

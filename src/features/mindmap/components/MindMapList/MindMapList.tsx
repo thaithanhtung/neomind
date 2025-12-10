@@ -60,9 +60,7 @@ export const MindMapList = ({
 
   const handleDelete = (mindMapId: string) => {
     if (
-      confirm(
-        'Bạn có chắc muốn xóa mind map này? Tất cả dữ liệu sẽ bị mất.'
-      )
+      confirm('Bạn có chắc muốn xóa mind map này? Tất cả dữ liệu sẽ bị mất.')
     ) {
       onDelete(mindMapId);
     }
@@ -110,7 +108,7 @@ export const MindMapList = ({
                 <Sparkles className='w-6 h-6 sm:w-8 sm:h-8 text-white' />
               </div>
             </div>
-            <div>
+            <div data-tour='header-title'>
               <h2 className='text-2xl sm:text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent'>
                 Mind Maps của tôi
               </h2>
@@ -129,6 +127,7 @@ export const MindMapList = ({
           </div>
           <button
             onClick={onCreateNew}
+            data-tour='create-button'
             className='group flex items-center gap-2 sm:gap-2.5 px-4 sm:px-6 py-2.5 sm:py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl sm:rounded-2xl hover:from-blue-700 hover:to-indigo-700 transition-all duration-300 shadow-xl hover:shadow-2xl transform hover:scale-105 hover:-translate-y-0.5 w-full sm:w-auto justify-center'
           >
             <Plus className='w-4 h-4 sm:w-5 sm:h-5 transition-transform duration-300 group-hover:rotate-90' />
@@ -179,7 +178,9 @@ export const MindMapList = ({
               className='group flex items-center gap-2 sm:gap-3 px-6 sm:px-8 py-3 sm:py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl sm:rounded-2xl hover:from-blue-700 hover:to-indigo-700 transition-all duration-300 shadow-xl hover:shadow-2xl transform hover:scale-105 hover:-translate-y-1'
             >
               <Plus className='w-5 h-5 sm:w-6 sm:h-6 transition-transform duration-300 group-hover:rotate-90' />
-              <span className='font-semibold text-base sm:text-lg'>Tạo mind map đầu tiên</span>
+              <span className='font-semibold text-base sm:text-lg'>
+                Tạo mind map đầu tiên
+              </span>
             </button>
           </div>
         ) : (
@@ -187,6 +188,7 @@ export const MindMapList = ({
             {mindMaps.map((mindMap, index) => (
               <div
                 key={mindMap.id}
+                data-tour={index === 0 ? 'mindmap-card' : undefined}
                 className={`group relative bg-white/90 backdrop-blur-sm rounded-2xl border transition-all duration-500 cursor-pointer overflow-hidden transform hover:-translate-y-1 ${
                   currentMindMapId === mindMap.id
                     ? 'border-blue-400 shadow-2xl shadow-blue-500/30 scale-[1.03] ring-2 ring-blue-400 ring-offset-2'
@@ -269,6 +271,7 @@ export const MindMapList = ({
                                 showMenuId === mindMap.id ? null : mindMap.id
                               );
                             }}
+                            data-tour={index === 0 ? 'mindmap-menu' : undefined}
                             className='p-1.5 sm:p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg sm:rounded-xl transition-all duration-200 hover:scale-110'
                           >
                             <MoreVertical className='w-5 h-5' />
@@ -317,7 +320,9 @@ export const MindMapList = ({
                       <div className='flex items-center gap-3 text-xs'>
                         <div className='flex items-center gap-1.5 text-gray-500'>
                           <Calendar className='w-3.5 h-3.5' />
-                          <span className='font-medium'>{formatDate(mindMap.updated_at)}</span>
+                          <span className='font-medium'>
+                            {formatDate(mindMap.updated_at)}
+                          </span>
                         </div>
                         <span className='text-gray-300'>•</span>
                         <div className='flex items-center gap-1.5 text-gray-500'>
@@ -331,7 +336,7 @@ export const MindMapList = ({
                         currentMindMapId !== mindMap.id && (
                           <div className='absolute inset-0 bg-gradient-to-br from-blue-500/10 to-indigo-500/10 pointer-events-none animate-fadeIn'></div>
                         )}
-                      
+
                       {/* Bottom gradient decoration */}
                       <div className='absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-400/20 via-indigo-400/20 to-purple-400/20 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-500'></div>
                     </>
