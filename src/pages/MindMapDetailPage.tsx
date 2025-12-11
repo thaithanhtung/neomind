@@ -18,12 +18,21 @@ import {
 import { TagInput } from '@/shared/components/TagInput';
 import { useKeyboardShortcuts } from '@/shared/hooks/useKeyboardShortcuts';
 import { ReactFlowInstance } from 'reactflow';
+import { ChevronDown, ChevronUp } from 'lucide-react';
 
 export const MindMapDetailPage = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuthRedux();
   const [showInput, setShowInput] = useState(false);
+  const [showTags, setShowTags] = useState(() => {
+    const saved = localStorage.getItem('mindmap-show-tags');
+    return saved ? saved === 'true' : false;
+  });
+  const [showSystemPrompt, setShowSystemPrompt] = useState(() => {
+    const saved = localStorage.getItem('mindmap-show-system-prompt');
+    return saved ? saved === 'true' : false;
+  });
   const {
     nodes,
     edges,
@@ -32,6 +41,7 @@ export const MindMapDetailPage = () => {
     highlightedTexts,
     mindMaps,
     currentMindMapId,
+    systemPrompt,
     onNodesChange,
     onEdgesChange,
     onConnect,
@@ -42,13 +52,20 @@ export const MindMapDetailPage = () => {
     onSelectMindMap,
     undo,
     redo,
+    onUpdateSystemPrompt,
   } = useMindMapRedux();
   const { startTour } = useTour('mindmap-detail');
   const reactFlowInstanceRef = useRef<ReactFlowInstance | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const [localSystemPrompt, setLocalSystemPrompt] = useState('');
 
   // Lấy selected node để xóa
   const selectedNode = nodes.find((n) => n.selected);
+
+  // Đồng bộ systemPrompt từ store
+  useEffect(() => {
+    setLocalSystemPrompt(systemPrompt || '');
+  }, [systemPrompt]);
 
   // Keyboard shortcuts
   useKeyboardShortcuts({
@@ -192,10 +209,104 @@ export const MindMapDetailPage = () => {
         </div>
       )}
 
-      {/* Tags Input */}
+      {/* Tags Input - Collapsible */}
       {currentMindMapId && (
-        <div className='px-6 py-4 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 z-10'>
-          <TagInput mindMapId={currentMindMapId} />
+        <div className='bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 z-10'>
+          <button
+            onClick={() => {
+              const newValue = !showTags;
+              setShowTags(newValue);
+              localStorage.setItem('mindmap-show-tags', String(newValue));
+            }}
+            className='w-full px-6 py-3 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors'
+          >
+            <div className='flex items-center gap-2'>
+              <span className='text-sm font-semibold text-gray-700 dark:text-gray-200'>
+                Tags
+              </span>
+            </div>
+            {showTags ? (
+              <ChevronUp className='w-4 h-4 text-gray-500 dark:text-gray-400' />
+            ) : (
+              <ChevronDown className='w-4 h-4 text-gray-500 dark:text-gray-400' />
+            )}
+          </button>
+          <div
+            className={`overflow-hidden transition-all duration-300 ease-in-out ${
+              showTags ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
+            }`}
+          >
+            <div className='px-6 pb-4'>
+              <TagInput mindMapId={currentMindMapId} />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* System Prompt config - Collapsible */}
+      {currentMindMapId && (
+        <div className='bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 z-10'>
+          <button
+            onClick={() => {
+              const newValue = !showSystemPrompt;
+              setShowSystemPrompt(newValue);
+              localStorage.setItem(
+                'mindmap-show-system-prompt',
+                String(newValue)
+              );
+            }}
+            className='w-full px-6 py-3 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors'
+          >
+            <div className='flex items-center gap-2'>
+              <span className='text-sm font-semibold text-gray-700 dark:text-gray-200'>
+                System Prompt
+              </span>
+              <span className='text-xs text-gray-500 dark:text-gray-400'>
+                (từng mind map)
+              </span>
+            </div>
+            {showSystemPrompt ? (
+              <ChevronUp className='w-4 h-4 text-gray-500 dark:text-gray-400' />
+            ) : (
+              <ChevronDown className='w-4 h-4 text-gray-500 dark:text-gray-400' />
+            )}
+          </button>
+          <div
+            className={`overflow-hidden transition-all duration-300 ease-in-out ${
+              showSystemPrompt ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
+            }`}
+          >
+            <div className='px-6 pb-4'>
+              <div className='flex items-start justify-between gap-4'>
+                <div className='flex-1'>
+                  <textarea
+                    value={localSystemPrompt}
+                    onChange={(e) => setLocalSystemPrompt(e.target.value)}
+                    onBlur={() => onUpdateSystemPrompt(localSystemPrompt)}
+                    onMouseDown={(e) => {
+                      // Tránh các handler bên ngoài cản focus
+                      e.stopPropagation();
+                    }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const target = e.currentTarget;
+                      // Đảm bảo focus khi click
+                      requestAnimationFrame(() => target.focus());
+                    }}
+                    placeholder='Nhập system prompt cho AI khi tạo nội dung cho mind map này'
+                    className='w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl focus:border-blue-400 focus:ring-4 focus:ring-blue-100 dark:focus:ring-blue-900 focus:outline-none text-sm resize-none transition-all duration-200 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500'
+                    rows={3}
+                  />
+                </div>
+                <button
+                  onClick={() => onUpdateSystemPrompt(localSystemPrompt)}
+                  className='self-start mt-7 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-semibold'
+                >
+                  Lưu
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 

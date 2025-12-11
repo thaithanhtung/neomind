@@ -2,16 +2,34 @@
  * AI Service - Tích hợp OpenAI API để tạo nội dung
  */
 
-interface OpenAIResponse {
-  choices: Array<{
-    message: {
-      content: string;
-    };
-  }>;
-  error?: {
-    message: string;
+import OpenAI from 'openai';
+
+/**
+ * Khởi tạo OpenAI client
+ */
+const getOpenAIClient = (): OpenAI | null => {
+  const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
+  const baseURL = import.meta.env.VITE_OPENAI_API_URL;
+
+  if (!apiKey) {
+    return null;
+  }
+
+  const config: {
+    apiKey: string;
+    baseURL?: string;
+    dangerouslyAllowBrowser?: boolean;
+  } = {
+    apiKey,
+    dangerouslyAllowBrowser: true, // Cho phép chạy trong browser
   };
-}
+
+  if (baseURL) {
+    config.baseURL = baseURL;
+  }
+
+  return new OpenAI(config);
+};
 
 /**
  * Gọi OpenAI API để tạo nội dung
@@ -20,58 +38,34 @@ const callOpenAI = async (
   prompt: string,
   systemPrompt?: string
 ): Promise<string> => {
-  const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
-  const apiUrl =
-    import.meta.env.VITE_OPENAI_API_URL ||
-    'https://api.openai.com/v1/chat/completions';
+  const client = getOpenAIClient();
 
-  if (!apiKey) {
+  if (!client) {
     throw new Error('OpenAI API key chưa được cấu hình');
   }
 
   try {
-    const response = await fetch(apiUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${apiKey}`,
+    const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
+      ...(systemPrompt
+        ? [
+            {
+              role: 'system' as const,
+              content: systemPrompt,
+            },
+          ]
+        : []),
+      {
+        role: 'user' as const,
+        content: prompt,
       },
-      body: JSON.stringify({
-        model: import.meta.env.VITE_OPENAI_MODEL || 'gpt-3.5-turbo',
-        messages: [
-          ...(systemPrompt
-            ? [
-                {
-                  role: 'system' as const,
-                  content: systemPrompt,
-                },
-              ]
-            : []),
-          {
-            role: 'user' as const,
-            content: prompt,
-          },
-        ],
-        temperature: 0.7,
-        max_tokens: 1000,
-      }),
+    ];
+
+    const response = await client.chat.completions.create({
+      model: import.meta.env.VITE_OPENAI_MODEL || 'gpt-3.5-turbo',
+      messages,
     });
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(
-        errorData.error?.message ||
-          `OpenAI API error: ${response.status} ${response.statusText}`
-      );
-    }
-
-    const data: OpenAIResponse = await response.json();
-
-    if (data.error) {
-      throw new Error(data.error.message);
-    }
-
-    const content = data.choices[0]?.message?.content;
+    const content = response.choices[0]?.message?.content;
     if (!content) {
       throw new Error('Không nhận được nội dung từ OpenAI');
     }
@@ -117,7 +111,10 @@ Bạn có thể tìm hiểu thêm về các khái niệm liên quan như compone
 /**
  * Tạo nội dung cho node mới dựa trên prompt
  */
-export const generateContent = async (prompt: string): Promise<string> => {
+export const generateContent = async (
+  prompt: string,
+  systemPromptOverride?: string
+): Promise<string> => {
   const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
 
   // Nếu không có API key, sử dụng mock response
@@ -128,7 +125,9 @@ export const generateContent = async (prompt: string): Promise<string> => {
   }
 
   try {
-    const systemPrompt = `Bạn là một trợ lý AI chuyên giải thích các khái niệm một cách rõ ràng và dễ hiểu. 
+    const systemPrompt = systemPromptOverride
+      ? systemPromptOverride
+      : `Bạn là một trợ lý AI chuyên giải thích các khái niệm một cách rõ ràng và dễ hiểu. 
 Hãy giải thích về chủ đề được yêu cầu một cách chi tiết, có cấu trúc và dễ hiểu.
 Trả lời bằng tiếng Việt.`;
 
@@ -149,7 +148,8 @@ Trả lời bằng tiếng Việt.`;
 export const generateRelatedContent = async (
   selectedText: string,
   context: string,
-  customPrompt?: string
+  customPrompt?: string,
+  systemPromptOverride?: string
 ): Promise<string> => {
   const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
 
@@ -161,7 +161,9 @@ export const generateRelatedContent = async (
   }
 
   try {
-    const systemPrompt = `Bạn là một trợ lý AI chuyên giải thích các khái niệm một cách rõ ràng và dễ hiểu.
+    const systemPrompt = systemPromptOverride
+      ? systemPromptOverride
+      : `Bạn là một trợ lý AI chuyên giải thích các khái niệm một cách rõ ràng và dễ hiểu.
 Hãy giải thích về khái niệm được yêu cầu dựa trên ngữ cảnh đã cho.
 Trả lời bằng tiếng Việt.`;
 

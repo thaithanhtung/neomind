@@ -29,6 +29,8 @@ import {
   saveToHistory,
   undo as undoAction,
   redo as redoAction,
+  setSystemPrompt,
+  updateSystemPrompt,
 } from '@/store/slices/mindMapSlice';
 import {
   NodeData,
@@ -61,6 +63,7 @@ export const useMindMapRedux = () => {
     isLoadingMindMaps,
     history,
     historyIndex,
+    systemPrompt,
   } = useAppSelector((state) => state.mindMap);
 
   const creatingNodeRef = useRef<Set<string>>(new Set());
@@ -412,7 +415,8 @@ export const useMindMapRedux = () => {
         const content = await generateRelatedContent(
           selected.text,
           parentNode.data.label,
-          customPrompt
+          customPrompt,
+          systemPrompt
         );
 
         // Cập nhật node với content và tắt loading
@@ -451,7 +455,7 @@ export const useMindMapRedux = () => {
         creatingNodeRef.current.delete(requestKey);
       }
     },
-    [nodes, highlightedTexts, dispatch]
+    [nodes, highlightedTexts, dispatch, systemPrompt]
   );
 
   const handleCreateNewMindMap = useCallback(
@@ -563,7 +567,8 @@ export const useMindMapRedux = () => {
 
       try {
         // Generate content từ OpenAI - đợi API response trước khi cập nhật
-        const content = await generateContent(topic);
+        // Sử dụng systemPrompt từ state hiện tại
+        const content = await generateContent(topic, systemPrompt);
 
         // Cập nhật node với content và tắt loading
         const updatedNode: Node<NodeData> = {
@@ -586,7 +591,7 @@ export const useMindMapRedux = () => {
         throw error;
       }
     },
-    [mindMapId, dispatch]
+    [mindMapId, dispatch, systemPrompt]
   );
 
   const handleUndo = useCallback(() => {
@@ -596,6 +601,15 @@ export const useMindMapRedux = () => {
   const handleRedo = useCallback(() => {
     dispatch(redoAction());
   }, [dispatch]);
+
+  const handleUpdateSystemPrompt = useCallback(
+    (prompt: string) => {
+      if (!mindMapId) return;
+      dispatch(setSystemPrompt(prompt));
+      dispatch(updateSystemPrompt({ mindMapId, systemPrompt: prompt }));
+    },
+    [dispatch, mindMapId]
+  );
 
   const canUndo = historyIndex > 0;
   const canRedo = historyIndex < history.length - 1;
@@ -609,6 +623,7 @@ export const useMindMapRedux = () => {
     mindMaps,
     isLoadingMindMaps,
     currentMindMapId: mindMapId,
+    systemPrompt,
     onNodesChange,
     onEdgesChange,
     onConnect,
@@ -621,6 +636,7 @@ export const useMindMapRedux = () => {
     onSelectMindMap: handleSelectMindMap,
     onUpdateMindMapTitle: handleUpdateTitle,
     onDeleteMindMap: handleDeleteMindMap,
+    onUpdateSystemPrompt: handleUpdateSystemPrompt,
     undo: handleUndo,
     redo: handleRedo,
     canUndo,

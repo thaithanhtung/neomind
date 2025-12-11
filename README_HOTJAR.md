@@ -82,3 +82,4 @@ Hotjar tuân thủ GDPR và có các tính năng để bảo vệ quyền riêng
 - Có thể mask sensitive data trong recordings
 - Có thể block specific elements khỏi tracking
 - User có thể opt-out thông qua Hotjar's opt-out page
+

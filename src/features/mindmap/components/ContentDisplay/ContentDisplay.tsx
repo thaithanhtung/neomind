@@ -97,26 +97,12 @@ export const ContentDisplay = ({
     <div
       className='relative w-full h-full'
       data-tour='node-content'
-      onMouseDown={(e) => {
-        // Chỉ stopPropagation nếu không phải đang select text
-        const selection = window.getSelection();
-        if (!selection || selection.toString().length === 0) {
-          // Cho phép text selection hoạt động bình thường
-          // Chỉ stopPropagation khi click vào empty space để tránh drag node
-          const target = e.target as HTMLElement;
-          if (target.tagName !== 'DIV' || target.textContent?.trim() === '') {
-            e.stopPropagation();
-          }
-        }
+      onMouseDown={() => {
+        // Không stopPropagation để cho phép text selection hoạt động
+        // ReactFlow sẽ tự xử lý drag nếu cần
       }}
-      onMouseMove={(e) => {
-        // Chỉ stopPropagation khi đang drag và có selection
-        if (e.buttons === 1) {
-          const selection = window.getSelection();
-          if (selection && selection.toString().length > 0) {
-            e.stopPropagation();
-          }
-        }
+      onMouseMove={() => {
+        // Không stopPropagation để cho phép text selection hoạt động
       }}
       onMouseUp={() => {
         // Không stopPropagation để cho phép text selection hoàn thành
@@ -147,14 +133,16 @@ export const ContentDisplay = ({
       )}
 
       {showPromptModal && savedSelectedText && (
-        <PromptModal
-          selectedText={savedSelectedText}
-          prompt={prompt}
-          onPromptChange={setPrompt}
-          onCreateNode={handleCreateNode}
-          onCancel={handleCancel}
-          textareaRef={textareaRef}
-        />
+        <div ref={modalRef}>
+          <PromptModal
+            selectedText={savedSelectedText}
+            prompt={prompt}
+            onPromptChange={setPrompt}
+            onCreateNode={handleCreateNode}
+            onCancel={handleCancel}
+            textareaRef={textareaRef}
+          />
+        </div>
       )}
     </div>
   );

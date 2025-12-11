@@ -22,6 +22,7 @@ interface MindMapState {
   mindMapId: string | null;
   mindMaps: MindMap[]; // Danh sách tất cả mind maps của user
   isLoadingMindMaps: boolean;
+  systemPrompt: string;
   // History for undo/redo
   history: HistorySnapshot[];
   historyIndex: number;
@@ -37,6 +38,7 @@ const initialState: MindMapState = {
   mindMapId: null,
   mindMaps: [],
   isLoadingMindMaps: false,
+  systemPrompt: '',
   history: [],
   historyIndex: -1,
   maxHistorySize: 50,
@@ -91,6 +93,7 @@ export const loadMindMapData = createAsyncThunk<
     edges: Edge[];
     highlightedTexts: Map<string, HighlightedText[]>;
     mindMapId: string;
+    systemPrompt: string;
   },
   string
 >('mindMap/loadData', async (mindMapId) => {
@@ -166,6 +169,41 @@ export const saveMindMapData = createAsyncThunk<
   await mindMapService.saveMindMap(mindMapId, nodes, edges, highlightedTexts);
 });
 
+export const updateSystemPrompt = createAsyncThunk<
+  { mindMapId: string; systemPrompt: string },
+  { mindMapId: string; systemPrompt: string }
+>('mindMap/updateSystemPrompt', async ({ mindMapId, systemPrompt }) => {
+  try {
+    const success = await mindMapService.updateMindMapSystemPrompt(
+      mindMapId,
+      systemPrompt
+    );
+    // Nếu không thành công nhưng không throw error, có thể là do cột chưa tồn tại
+    // Vẫn return success để update local state
+    if (!success) {
+      console.warn(
+        'System prompt update skipped (column may not exist). Local state updated.'
+      );
+    }
+    return { mindMapId, systemPrompt };
+  } catch (error: any) {
+    // Nếu là lỗi về missing column, vẫn update local state
+    const errorMsg = String(error?.message || '');
+    if (
+      errorMsg.toLowerCase().includes('system_prompt') ||
+      errorMsg.toLowerCase().includes('column') ||
+      errorMsg.toLowerCase().includes('schema cache')
+    ) {
+      console.warn(
+        'System prompt column does not exist. Local state updated but not saved to DB.'
+      );
+      return { mindMapId, systemPrompt };
+    }
+    // Re-throw các lỗi khác
+    throw error;
+  }
+});
+
 const mindMapSlice = createSlice({
   name: 'mindMap',
   initialState,
@@ -214,6 +252,7 @@ const mindMapSlice = createSlice({
       state.edges = [];
       state.highlightedTexts = new Map();
       state.mindMapId = null;
+      state.systemPrompt = '';
       state.history = [];
       state.historyIndex = -1;
     },
@@ -227,6 +266,9 @@ const mindMapSlice = createSlice({
     },
     setLoadingData: (state, action: PayloadAction<boolean>) => {
       state.isLoadingData = action.payload;
+    },
+    setSystemPrompt: (state, action: PayloadAction<string>) => {
+      state.systemPrompt = action.payload;
     },
     // History actions
     saveToHistory: (state) => {
@@ -282,6 +324,7 @@ const mindMapSlice = createSlice({
         state.edges = action.payload.edges;
         state.highlightedTexts = action.payload.highlightedTexts;
         state.mindMapId = action.payload.mindMapId;
+        state.systemPrompt = action.payload.systemPrompt || '';
         state.isLoadingData = false;
         // Reset history khi load data mới
         state.history = [];
@@ -343,7 +386,16 @@ const mindMapSlice = createSlice({
           state.edges = [];
           state.highlightedTexts = new Map();
           state.mindMapId = null;
+          state.systemPrompt = '';
         }
+      })
+      // Update system prompt
+      .addCase(updateSystemPrompt.fulfilled, (state, action) => {
+        const { mindMapId, systemPrompt } = action.payload;
+        state.systemPrompt = systemPrompt;
+        state.mindMaps = state.mindMaps.map((m) =>
+          m.id === mindMapId ? { ...m, system_prompt: systemPrompt } : m
+        );
       });
   },
 });
@@ -360,6 +412,7 @@ export const {
   clearMindMap,
   setMindMapId,
   setLoadingData,
+  setSystemPrompt,
   saveToHistory,
   undo,
   redo,

@@ -13,12 +13,25 @@ if (!supabaseUrl || !supabaseAnonKey) {
 
 export const supabase = createClient(supabaseUrl || '', supabaseAnonKey || '');
 
+// Helper: nhận biết lỗi thiếu cột system_prompt (chưa migrate DB)
+const isSystemPromptMissing = (error: any) => {
+  const msg = String(error?.message || error?.details || '');
+  const lowerMsg = msg.toLowerCase();
+  return (
+    lowerMsg.includes('system_prompt') ||
+    lowerMsg.includes('column') ||
+    lowerMsg.includes('schema cache') ||
+    lowerMsg.includes('does not exist')
+  );
+};
+
 // Types
 export interface MindMap {
   id: string;
   title: string;
   created_at: string;
   updated_at: string;
+  system_prompt?: string | null;
 }
 
 // Types for database rows
@@ -102,6 +115,7 @@ export const mindMapService = {
     nodes: Node<NodeData>[];
     edges: Edge[];
     highlightedTexts: Map<string, HighlightedText[]>;
+    systemPrompt: string;
   } | null> {
     if (!supabaseUrl || !supabaseAnonKey) {
       console.warn('Supabase not configured, returning null');
@@ -109,6 +123,27 @@ export const mindMapService = {
     }
 
     try {
+      let systemPrompt = '';
+      // Lấy system_prompt của mind map (nếu cột tồn tại)
+      const { data: mindMapMeta, error: mindMapError } = await supabase
+        .from('mind_maps')
+        .select('system_prompt')
+        .eq('id', mindMapId)
+        .maybeSingle();
+
+      if (mindMapError) {
+        if (isSystemPromptMissing(mindMapError)) {
+          console.warn(
+            'system_prompt column chưa có trên mind_maps. Bỏ qua và dùng giá trị rỗng.'
+          );
+        } else {
+          console.error('Error loading mind map meta:', mindMapError);
+          throw mindMapError;
+        }
+      } else {
+        systemPrompt = mindMapMeta?.system_prompt || '';
+      }
+
       // Load nodes
       const { data: nodesData, error: nodesError } = await supabase
         .from('nodes')
@@ -167,7 +202,12 @@ export const mindMapService = {
         ]);
       });
 
-      return { nodes, edges, highlightedTexts };
+      return {
+        nodes,
+        edges,
+        highlightedTexts,
+        systemPrompt,
+      };
     } catch (error) {
       console.error('Error loading mind map:', error);
       return null;
@@ -406,11 +446,34 @@ export const mindMapService = {
     try {
       const { data, error } = await supabase
         .from('mind_maps')
-        .select('id, title, created_at, updated_at')
+        .select('id, title, created_at, updated_at, system_prompt')
         .eq('user_id', userId)
         .order('updated_at', { ascending: false });
 
       if (error) {
+        if (isSystemPromptMissing(error)) {
+          console.warn(
+            'system_prompt column chưa có trên mind_maps. Fallback select không có cột này.'
+          );
+          const { data: fallbackData, error: fallbackError } = await supabase
+            .from('mind_maps')
+            .select('id, title, created_at, updated_at')
+            .eq('user_id', userId)
+            .order('updated_at', { ascending: false });
+
+          if (fallbackError) {
+            console.error(
+              'Error fetching mind maps (fallback):',
+              fallbackError
+            );
+            throw fallbackError;
+          }
+
+          return (
+            fallbackData?.map((m) => ({ ...m, system_prompt: null })) || []
+          );
+        }
+
         console.error('Error fetching mind maps:', error);
         throw error;
       }
@@ -508,6 +571,44 @@ export const mindMapService = {
     } catch (error) {
       console.error('Error in getOrCreateDefaultMindMap:', error);
       return null;
+    }
+  },
+
+  /**
+   * Update system prompt for a mind map
+   */
+  async updateMindMapSystemPrompt(
+    mindMapId: string,
+    systemPrompt: string
+  ): Promise<boolean> {
+    if (!supabaseUrl || !supabaseAnonKey) {
+      return false;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('mind_maps')
+        .update({
+          system_prompt: systemPrompt,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', mindMapId);
+
+      if (error) {
+        if (isSystemPromptMissing(error)) {
+          console.warn(
+            'system_prompt column chưa có trên mind_maps. Bỏ qua update.'
+          );
+          return true;
+        }
+        console.error('Error updating system prompt:', error);
+        throw error;
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Error in updateMindMapSystemPrompt:', error);
+      return false;
     }
   },
 };

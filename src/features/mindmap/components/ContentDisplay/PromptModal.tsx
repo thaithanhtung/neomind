@@ -1,5 +1,5 @@
 import { Plus, X, Sparkles, MessageSquare } from 'lucide-react';
-import { useEffect } from 'react';
+import { useEffect, useCallback } from 'react';
 import { SelectedText } from '@/features/mindmap/types';
 
 interface PromptModalProps {
@@ -19,29 +19,50 @@ export const PromptModal = ({
   onCancel,
   textareaRef,
 }: PromptModalProps) => {
+  // Hàm để focus vào textarea
+  const focusTextarea = useCallback(() => {
+    if (textareaRef.current) {
+      // Xóa text selection nếu còn
+      window.getSelection()?.removeAllRanges();
+      // Focus vào textarea
+      textareaRef.current.focus();
+      // Đặt cursor ở cuối
+      const length = textareaRef.current.value.length;
+      textareaRef.current.setSelectionRange(length, length);
+    }
+  }, [textareaRef]);
+
   // Focus vào textarea khi modal mở
   useEffect(() => {
     // Đợi một chút để đảm bảo modal đã render hoàn toàn
     const timer = setTimeout(() => {
-      if (textareaRef.current) {
-        // Xóa text selection nếu còn
-        window.getSelection()?.removeAllRanges();
-        // Focus vào textarea
-        textareaRef.current.focus();
-        // Đặt cursor ở cuối
-        const length = textareaRef.current.value.length;
-        textareaRef.current.setSelectionRange(length, length);
-      }
+      focusTextarea();
     }, 150);
 
     return () => clearTimeout(timer);
-  }, [textareaRef]);
+  }, [focusTextarea]);
+
+  // Focus lại khi click vào modal
+  const handleModalClick = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      // Focus lại textarea khi click vào modal
+      setTimeout(() => {
+        focusTextarea();
+      }, 0);
+    },
+    [focusTextarea]
+  );
 
   return (
-    <div className='fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 animate-fadeIn'>
+    <div
+      className='fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 animate-fadeIn'
+      onClick={handleModalClick}
+    >
       <div
         className='bg-white/95 backdrop-blur-lg rounded-2xl shadow-2xl border border-gray-200/50 p-6 min-w-[450px] max-w-[550px] mx-4 transform animate-fadeIn'
         onMouseDown={(e) => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()}
       >
         <div className='mb-5'>
           <div className='flex items-center justify-between mb-4'>
@@ -49,9 +70,7 @@ export const PromptModal = ({
               <div className='p-2 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl shadow-lg'>
                 <Sparkles className='w-5 h-5 text-white' />
               </div>
-              <h3 className='text-xl font-bold text-gray-800'>
-                Tạo node mới
-              </h3>
+              <h3 className='text-xl font-bold text-gray-800'>Tạo node mới</h3>
             </div>
             <button
               onClick={onCancel}
@@ -64,7 +83,9 @@ export const PromptModal = ({
             <div className='flex items-start gap-2'>
               <MessageSquare className='w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0' />
               <div className='flex-1'>
-                <p className='text-xs font-medium text-blue-700 mb-1.5'>Text đã chọn:</p>
+                <p className='text-xs font-medium text-blue-700 mb-1.5'>
+                  Text đã chọn:
+                </p>
                 <p className='text-sm font-semibold text-gray-800 break-words leading-relaxed'>
                   "{selectedText.text}"
                 </p>
@@ -95,6 +116,22 @@ export const PromptModal = ({
                 // Đảm bảo cursor ở cuối khi focus
                 const length = e.currentTarget.value.length;
                 e.currentTarget.setSelectionRange(length, length);
+              }}
+              onMouseDown={(e) => {
+                // Đảm bảo focus khi click vào textarea
+                e.stopPropagation();
+                setTimeout(() => {
+                  if (textareaRef.current) {
+                    textareaRef.current.focus();
+                  }
+                }, 0);
+              }}
+              onClick={(e) => {
+                // Đảm bảo focus khi click vào textarea
+                e.stopPropagation();
+                if (textareaRef.current) {
+                  textareaRef.current.focus();
+                }
               }}
             />
           </div>

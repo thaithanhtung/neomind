@@ -16,7 +16,10 @@ export const useTextSelection = ({
 }: UseTextSelectionProps) => {
   const [selectedText, setSelectedText] = useState<SelectedText | null>(null);
   const [showAddButton, setShowAddButton] = useState(false);
-  const [buttonPosition, setButtonPosition] = useState<{ top: number; left: number }>({
+  const [buttonPosition, setButtonPosition] = useState<{
+    top: number;
+    left: number;
+  }>({
     top: 0,
     left: 0,
   });
@@ -40,8 +43,7 @@ export const useTextSelection = ({
 
         const selection = window.getSelection();
         if (!selection || selection.rangeCount === 0) {
-          setShowAddButton(false);
-          setSelectedText(null);
+          // Không clear ngay, đợi handleClickOutside xử lý
           return;
         }
 
@@ -49,8 +51,7 @@ export const useTextSelection = ({
         const selectedTextValue = range.toString().trim();
 
         if (selectedTextValue.length === 0) {
-          setShowAddButton(false);
-          setSelectedText(null);
+          // Không clear ngay, đợi handleClickOutside xử lý
           return;
         }
 
@@ -70,48 +71,53 @@ export const useTextSelection = ({
         // Tính toán vị trí button với logic cải thiện
         const rect = range.getBoundingClientRect();
         const contentRect = contentRef.current.getBoundingClientRect();
-        
+
         // Tìm parent element có position relative (ContentDisplay wrapper)
         const parentElement = contentRef.current.closest('.relative');
-        const parentRect = parentElement ? parentElement.getBoundingClientRect() : contentRect;
-        
+        const parentRect = parentElement
+          ? parentElement.getBoundingClientRect()
+          : contentRect;
+
         // Tính toán vị trí button relative to parent
         const buttonWidth = 40;
         const buttonHeight = 40;
         const offset = 8;
-        
+
         // Mặc định đặt button bên phải của selection
         let buttonLeft = rect.right - parentRect.left + offset;
-        let buttonTop = rect.top - parentRect.top + (rect.height / 2) - (buttonHeight / 2);
-        
+        let buttonTop =
+          rect.top - parentRect.top + rect.height / 2 - buttonHeight / 2;
+
         // Giới hạn trong phạm vi parent element
-        const maxLeft = parentElement && parentElement instanceof HTMLElement 
-          ? parentElement.offsetWidth - buttonWidth - offset 
-          : contentRect.width - buttonWidth - offset;
-        const maxTop = parentElement && parentElement instanceof HTMLElement
-          ? parentElement.offsetHeight - buttonHeight - offset
-          : contentRect.height - buttonHeight - offset;
-        
+        const maxLeft =
+          parentElement && parentElement instanceof HTMLElement
+            ? parentElement.offsetWidth - buttonWidth - offset
+            : contentRect.width - buttonWidth - offset;
+        const maxTop =
+          parentElement && parentElement instanceof HTMLElement
+            ? parentElement.offsetHeight - buttonHeight - offset
+            : contentRect.height - buttonHeight - offset;
+
         // Kiểm tra nếu button tràn ra ngoài bên phải
         if (buttonLeft > maxLeft) {
           // Đặt button ở bên trái của selection
           buttonLeft = rect.left - parentRect.left - buttonWidth - offset;
         }
-        
+
         // Kiểm tra nếu button tràn ra ngoài bên trái
         if (buttonLeft < offset) {
           buttonLeft = offset;
         }
-        
+
         // Kiểm tra và điều chỉnh vị trí dọc
         if (buttonTop < offset) {
           buttonTop = rect.bottom - parentRect.top + offset;
         }
-        
+
         if (buttonTop > maxTop) {
           buttonTop = rect.top - parentRect.top - buttonHeight - offset;
         }
-        
+
         // Đảm bảo button luôn nằm trong viewport
         buttonTop = Math.max(offset, Math.min(buttonTop, maxTop));
         buttonLeft = Math.max(offset, Math.min(buttonLeft, maxLeft));
@@ -138,9 +144,9 @@ export const useTextSelection = ({
 
         // Lưu range để có thể restore lại nếu bị mất
         savedRangeRef.current = range.cloneRange();
-        
+
         setShowAddButton(true);
-        
+
         // Đảm bảo selection vẫn được giữ sau khi button hiển thị
         // Restore selection nếu bị mất do event nào đó
         setTimeout(() => {
@@ -180,29 +186,41 @@ export const useTextSelection = ({
       }
 
       // Đợi một chút để đảm bảo text selection đã hoàn thành
+      // Tăng delay để tránh conflict với mouseup handler
       setTimeout(() => {
         const selection = window.getSelection();
-        
+
         // Nếu click bên ngoài contentRef, luôn clear selection và ẩn button
         if (contentRef.current && !contentRef.current.contains(target)) {
-          window.getSelection()?.removeAllRanges();
-          handleCancel();
+          // Kiểm tra lại selection trước khi clear
+          if (
+            !selection ||
+            selection.rangeCount === 0 ||
+            selection.toString().trim().length === 0
+          ) {
+            handleCancel();
+          }
           return;
         }
 
         // Nếu click vào contentRef nhưng không có selection hoặc selection rỗng
         // thì cũng clear selection và ẩn button
         if (contentRef.current && contentRef.current.contains(target)) {
-          if (!selection || selection.rangeCount === 0 || selection.toString().trim().length === 0) {
+          if (
+            !selection ||
+            selection.rangeCount === 0 ||
+            selection.toString().trim().length === 0
+          ) {
             // Chỉ clear nếu không đang trong quá trình drag
-            const isDragging = (event.target as HTMLElement)?.closest('.react-flow__node') !== null;
+            const isDragging =
+              (event.target as HTMLElement)?.closest('.react-flow__node') !==
+              null;
             if (!isDragging) {
-              window.getSelection()?.removeAllRanges();
               handleCancel();
             }
           }
         }
-      }, 50); // Delay để đảm bảo selection đã được set
+      }, 200); // Tăng delay để tránh conflict với mouseup handler
     };
 
     // Sử dụng capture phase để handle trước
@@ -243,38 +261,43 @@ export const useTextSelection = ({
 
           // Tính toán lại vị trí với logic tương tự
           const parentElement = contentRef.current!.closest('.relative');
-          const parentRect = parentElement ? parentElement.getBoundingClientRect() : contentRect;
-          
+          const parentRect = parentElement
+            ? parentElement.getBoundingClientRect()
+            : contentRect;
+
           const buttonWidth = 40;
           const buttonHeight = 40;
           const offset = 8;
-          
+
           let buttonLeft = rect.right - parentRect.left + offset;
-          let buttonTop = rect.top - parentRect.top + (rect.height / 2) - (buttonHeight / 2);
-          
-          const maxLeft = parentElement && parentElement instanceof HTMLElement
-            ? parentElement.offsetWidth - buttonWidth - offset
-            : contentRect.width - buttonWidth - offset;
-          const maxTop = parentElement && parentElement instanceof HTMLElement
-            ? parentElement.offsetHeight - buttonHeight - offset
-            : contentRect.height - buttonHeight - offset;
-          
+          let buttonTop =
+            rect.top - parentRect.top + rect.height / 2 - buttonHeight / 2;
+
+          const maxLeft =
+            parentElement && parentElement instanceof HTMLElement
+              ? parentElement.offsetWidth - buttonWidth - offset
+              : contentRect.width - buttonWidth - offset;
+          const maxTop =
+            parentElement && parentElement instanceof HTMLElement
+              ? parentElement.offsetHeight - buttonHeight - offset
+              : contentRect.height - buttonHeight - offset;
+
           if (buttonLeft > maxLeft) {
             buttonLeft = rect.left - parentRect.left - buttonWidth - offset;
           }
-          
+
           if (buttonLeft < offset) {
             buttonLeft = offset;
           }
-          
+
           if (buttonTop < offset) {
             buttonTop = rect.bottom - parentRect.top + offset;
           }
-          
+
           if (buttonTop > maxTop) {
             buttonTop = rect.top - parentRect.top - buttonHeight - offset;
           }
-          
+
           buttonTop = Math.max(offset, Math.min(buttonTop, maxTop));
           buttonLeft = Math.max(offset, Math.min(buttonLeft, maxLeft));
 
@@ -299,7 +322,7 @@ export const useTextSelection = ({
           scrollContainer.removeEventListener('scroll', updatePosition);
         };
       }
-      
+
       return () => {
         clearInterval(intervalId);
       };
@@ -315,4 +338,3 @@ export const useTextSelection = ({
     setSelectedText,
   };
 };
-
