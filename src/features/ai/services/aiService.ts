@@ -1,11 +1,20 @@
 /**
  * AI Service - Tích hợp OpenAI API để tạo nội dung
+ * ✨ Optimized với caching và streaming
  */
 
 import OpenAI from 'openai';
+import { store } from '@/store';
 
 /**
- * Khởi tạo OpenAI client
+ * Cache OpenAI client instance để tránh tạo mới mỗi lần
+ */
+let cachedClient: OpenAI | null = null;
+let lastApiKey: string | null = null;
+let lastBaseURL: string | null = null;
+
+/**
+ * Khởi tạo hoặc reuse OpenAI client
  */
 const getOpenAIClient = (): OpenAI | null => {
   const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
@@ -13,6 +22,11 @@ const getOpenAIClient = (): OpenAI | null => {
 
   if (!apiKey) {
     return null;
+  }
+
+  // Reuse client nếu config không thay đổi
+  if (cachedClient && apiKey === lastApiKey && baseURL === lastBaseURL) {
+    return cachedClient;
   }
 
   const config: {
@@ -28,11 +42,36 @@ const getOpenAIClient = (): OpenAI | null => {
     config.baseURL = baseURL;
   }
 
-  return new OpenAI(config);
+  // Cache client mới
+  cachedClient = new OpenAI(config);
+  lastApiKey = apiKey;
+  lastBaseURL = baseURL || null;
+
+  console.log('✅ OpenAI client created and cached');
+  return cachedClient;
+};
+
+/**
+ * Lấy AI model từ Redux store (cached) thay vì query database
+ */
+const getAIModel = (): string => {
+  const state = store.getState();
+  const cachedModel = state.userProfile.profile?.ai_model;
+
+  if (cachedModel) {
+    console.log('✅ Using cached AI model:', cachedModel);
+    return cachedModel;
+  }
+
+  // Fallback về env variable
+  const defaultModel = import.meta.env.VITE_OPENAI_MODEL || 'gpt-5-nano';
+  console.log('⚠️ No cached model, using default:', defaultModel);
+  return defaultModel;
 };
 
 /**
  * Gọi OpenAI API để tạo nội dung
+ * ✨ Optimized: Sử dụng cached model từ Redux, không query database
  */
 const callOpenAI = async (
   prompt: string,
@@ -45,6 +84,9 @@ const callOpenAI = async (
   }
 
   try {
+    // ✨ Lấy model từ Redux cache (KHÔNG query database)
+    const model = getAIModel();
+
     const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
       ...(systemPrompt
         ? [
@@ -61,7 +103,7 @@ const callOpenAI = async (
     ];
 
     const response = await client.chat.completions.create({
-      model: import.meta.env.VITE_OPENAI_MODEL || 'gpt-3.5-turbo',
+      model: model,
       messages,
     });
 
@@ -73,6 +115,69 @@ const callOpenAI = async (
     return content;
   } catch (error) {
     console.error('OpenAI API error:', error);
+    throw error;
+  }
+};
+
+/**
+ * Gọi OpenAI API với STREAMING để hiển thị content theo thời gian thực
+ * ✨ NEW: Streaming mode cho UX tốt hơn
+ */
+const callOpenAIStream = async (
+  prompt: string,
+  systemPrompt?: string,
+  onChunk?: (chunk: string) => void
+): Promise<string> => {
+  const client = getOpenAIClient();
+
+  if (!client) {
+    throw new Error('OpenAI API key chưa được cấu hình');
+  }
+
+  try {
+    const model = getAIModel();
+
+    const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
+      ...(systemPrompt
+        ? [
+            {
+              role: 'system' as const,
+              content: systemPrompt,
+            },
+          ]
+        : []),
+      {
+        role: 'user' as const,
+        content: prompt,
+      },
+    ];
+
+    const stream = await client.chat.completions.create({
+      model: model,
+      messages,
+      stream: true, // ✨ Enable streaming
+    });
+
+    let fullContent = '';
+
+    for await (const chunk of stream) {
+      const delta = chunk.choices[0]?.delta?.content || '';
+      if (delta) {
+        fullContent += delta;
+        // Callback để update UI real-time
+        if (onChunk) {
+          onChunk(fullContent);
+        }
+      }
+    }
+
+    if (!fullContent) {
+      throw new Error('Không nhận được nội dung từ OpenAI');
+    }
+
+    return fullContent;
+  } catch (error) {
+    console.error('OpenAI API streaming error:', error);
     throw error;
   }
 };
@@ -110,10 +215,12 @@ Bạn có thể tìm hiểu thêm về các khái niệm liên quan như compone
 
 /**
  * Tạo nội dung cho node mới dựa trên prompt
+ * ✨ Optimized: Rút ngắn prompt, support streaming
  */
 export const generateContent = async (
   prompt: string,
-  systemPromptOverride?: string
+  systemPromptOverride?: string,
+  onChunk?: (chunk: string) => void
 ): Promise<string> => {
   const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
 
@@ -125,13 +232,18 @@ export const generateContent = async (
   }
 
   try {
+    // ✨ Optimized: Rút ngắn system prompt
     const systemPrompt = systemPromptOverride
       ? systemPromptOverride
-      : `Bạn là một trợ lý AI chuyên giải thích các khái niệm một cách rõ ràng và dễ hiểu. 
-Hãy giải thích về chủ đề được yêu cầu một cách chi tiết, có cấu trúc và dễ hiểu.
-Trả lời bằng tiếng Việt.`;
+      : `Trợ lý AI giải thích khái niệm rõ ràng, chi tiết. Trả lời bằng tiếng Việt.`;
 
-    const userPrompt = `Hãy giải thích chi tiết về: ${prompt}`;
+    // ✨ Optimized: Rút ngắn user prompt
+    const userPrompt = `Giải thích: ${prompt}`;
+
+    // ✨ Sử dụng streaming nếu có callback
+    if (onChunk) {
+      return await callOpenAIStream(userPrompt, systemPrompt, onChunk);
+    }
 
     return await callOpenAI(userPrompt, systemPrompt);
   } catch (error) {
@@ -144,12 +256,14 @@ Trả lời bằng tiếng Việt.`;
 
 /**
  * Tạo nội dung liên quan dựa trên text đã chọn và context
+ * ✨ Optimized: Rút ngắn prompt, support streaming
  */
 export const generateRelatedContent = async (
   selectedText: string,
   context: string,
   customPrompt?: string,
-  systemPromptOverride?: string
+  systemPromptOverride?: string,
+  onChunk?: (chunk: string) => void
 ): Promise<string> => {
   const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
 
@@ -163,21 +277,27 @@ export const generateRelatedContent = async (
   try {
     const systemPrompt = systemPromptOverride
       ? systemPromptOverride
-      : `Bạn là trợ lý AI giải thích khái niệm rõ ràng, dễ hiểu. Trả lời bằng tiếng Việt.`;
+      : `Trợ lý AI giải thích khái niệm rõ ràng, dễ hiểu. Trả lời bằng tiếng Việt.`;
 
+    // ✨ Optimized: Rút ngắn prompt, bỏ từ thừa
     let userPrompt: string;
 
     if (customPrompt) {
-      userPrompt = `Ngữ cảnh: "${context}"
-Text đã chọn: "${selectedText}"
-Câu hỏi: "${customPrompt}"
+      userPrompt = `Context: "${context}"
+Selected: "${selectedText}"
+Q: "${customPrompt}"
 
-Giải thích về "${customPrompt}" dựa trên ngữ cảnh và text đã chọn.`;
+Giải thích "${customPrompt}" dựa trên context.`;
     } else {
-      userPrompt = `Ngữ cảnh: "${context}"
-Text đã chọn: "${selectedText}"
+      userPrompt = `Context: "${context}"
+Selected: "${selectedText}"
 
-Giải thích về "${selectedText}" trong ngữ cảnh này.`;
+Giải thích "${selectedText}".`;
+    }
+
+    // ✨ Sử dụng streaming nếu có callback
+    if (onChunk) {
+      return await callOpenAIStream(userPrompt, systemPrompt, onChunk);
     }
 
     return await callOpenAI(userPrompt, systemPrompt);

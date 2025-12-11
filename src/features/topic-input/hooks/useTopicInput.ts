@@ -5,16 +5,17 @@ import { NodeData } from '@/features/mindmap/types';
 
 export const useTopicInput = (
   onCreateNode: (node: Node<NodeData>) => void,
+  onUpdateNode: (node: Node<NodeData>) => void,
   setIsLoading: (loading: boolean) => void
 ) => {
   const handleTopicSubmit = useCallback(
     async (topic: string) => {
       setIsLoading(true);
       try {
-        const content = await generateContent(topic);
         const newNodeId = `node-${Date.now()}`;
 
-        const newNode: Node<NodeData> = {
+        // ✨ Tạo node với loading state trước
+        const loadingNode: Node<NodeData> = {
           id: newNodeId,
           type: 'custom',
           position: {
@@ -24,20 +25,51 @@ export const useTopicInput = (
           data: {
             id: newNodeId,
             label: topic,
-            content: content.replace(/\n/g, '<br>'),
+            content: '',
             level: 0,
+            isLoading: true,
           },
           selected: false,
         };
 
-        onCreateNode(newNode);
+        onCreateNode(loadingNode);
+
+        // ✨ Generate content với STREAMING
+        const content = await generateContent(
+          topic,
+          undefined,
+          // Streaming callback: update node content real-time
+          (streamedContent) => {
+            const streamNode: Node<NodeData> = {
+              ...loadingNode,
+              data: {
+                ...loadingNode.data,
+                content: streamedContent.replace(/\n/g, '<br>'),
+                isLoading: false, // ✨ TẮT loading để hiển thị content ngay
+              },
+            };
+            onUpdateNode(streamNode);
+          }
+        );
+
+        // Cập nhật node cuối cùng
+        const finalNode: Node<NodeData> = {
+          ...loadingNode,
+          data: {
+            ...loadingNode.data,
+            content: content.replace(/\n/g, '<br>'),
+            isLoading: false,
+          },
+        };
+
+        onUpdateNode(finalNode);
       } catch (error) {
         console.error('Error generating content:', error);
       } finally {
         setIsLoading(false);
       }
     },
-    [onCreateNode, setIsLoading]
+    [onCreateNode, onUpdateNode, setIsLoading]
   );
 
   return { handleTopicSubmit };

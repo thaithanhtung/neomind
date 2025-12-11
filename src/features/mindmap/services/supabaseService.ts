@@ -14,8 +14,9 @@ if (!supabaseUrl || !supabaseAnonKey) {
 export const supabase = createClient(supabaseUrl || '', supabaseAnonKey || '');
 
 // Helper: nhận biết lỗi thiếu cột system_prompt (chưa migrate DB)
-const isSystemPromptMissing = (error: any) => {
-  const msg = String(error?.message || error?.details || '');
+const isSystemPromptMissing = (error: unknown) => {
+  const errorObj = error as { message?: string; details?: string };
+  const msg = String(errorObj?.message || errorObj?.details || '');
   const lowerMsg = msg.toLowerCase();
   return (
     lowerMsg.includes('system_prompt') ||
@@ -32,6 +33,18 @@ export interface MindMap {
   created_at: string;
   updated_at: string;
   system_prompt?: string | null;
+}
+
+export interface MindMapShare {
+  id: string;
+  mind_map_id: string;
+  share_token: string;
+  permission: 'view' | 'edit';
+  is_active: boolean;
+  expires_at: string | null;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
 }
 
 // Types for database rows
@@ -608,6 +621,251 @@ export const mindMapService = {
       return true;
     } catch (error) {
       console.error('Error in updateMindMapSystemPrompt:', error);
+      return false;
+    }
+  },
+
+  /**
+   * Tạo share link cho mind map
+   */
+  async createShareLink(
+    mindMapId: string
+  ): Promise<{ token: string; url: string } | null> {
+    if (!supabaseUrl || !supabaseAnonKey) {
+      console.warn('Supabase not configured');
+      return null;
+    }
+
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) {
+        console.error('User not authenticated');
+        return null;
+      }
+
+      // Verify user owns this mind map before creating share link
+      const { data: mindMapData, error: mindMapError } = await supabase
+        .from('mind_maps')
+        .select('user_id')
+        .eq('id', mindMapId)
+        .single();
+
+      if (mindMapError || !mindMapData) {
+        console.error('Mind map not found:', mindMapError);
+        return null;
+      }
+
+      if (mindMapData.user_id !== user.id) {
+        console.error('User does not own this mind map');
+        return null;
+      }
+
+      const shareToken = crypto.randomUUID();
+
+      const { data, error } = await supabase
+        .from('mind_map_shares')
+        .insert({
+          mind_map_id: mindMapId,
+          share_token: shareToken,
+          permission: 'view',
+          created_by: user.id,
+        })
+        .select('share_token')
+        .single();
+
+      if (error) {
+        console.error('Error creating share link:', error);
+        throw error;
+      }
+
+      const shareUrl = `${window.location.origin}/shared/${data.share_token}`;
+      return { token: data.share_token, url: shareUrl };
+    } catch (error) {
+      console.error('Error in createShareLink:', error);
+      return null;
+    }
+  },
+
+  /**
+   * Lấy tất cả share links của một mind map
+   */
+  async getShareLinks(mindMapId: string): Promise<MindMapShare[]> {
+    if (!supabaseUrl || !supabaseAnonKey) {
+      return [];
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('mind_map_shares')
+        .select('*')
+        .eq('mind_map_id', mindMapId)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching share links:', error);
+        throw error;
+      }
+
+      return data || [];
+    } catch (error) {
+      console.error('Error in getShareLinks:', error);
+      return [];
+    }
+  },
+
+  /**
+   * Load mind map từ share token (không cần auth)
+   */
+  async loadSharedMindMap(shareToken: string): Promise<{
+    mindMap: MindMap | null;
+    nodes: Node<NodeData>[];
+    edges: Edge[];
+    highlightedTexts: Map<string, HighlightedText[]>;
+    systemPrompt: string;
+    isOwner: boolean;
+  } | null> {
+    if (!supabaseUrl || !supabaseAnonKey) {
+      console.warn('Supabase not configured');
+      return null;
+    }
+
+    try {
+      console.log('Loading shared mind map with token:', shareToken);
+
+      // Verify share token - KHÔNG dùng .single() để tránh lỗi
+      const { data: shareDataArray, error: shareError } = await supabase
+        .from('mind_map_shares')
+        .select('mind_map_id, is_active, expires_at')
+        .eq('share_token', shareToken)
+        .eq('is_active', true);
+
+      console.log('Share data result:', { shareDataArray, shareError });
+
+      if (shareError) {
+        console.error('Error fetching share token:', shareError);
+        return null;
+      }
+
+      if (!shareDataArray || shareDataArray.length === 0) {
+        console.error('Share token not found or inactive');
+        return null;
+      }
+
+      // Lấy record đầu tiên (nên chỉ có 1 vì share_token là UNIQUE)
+      const shareData = shareDataArray[0];
+
+      // Check expiration
+      if (shareData.expires_at && new Date(shareData.expires_at) < new Date()) {
+        console.error('Share link has expired');
+        return null;
+      }
+
+      console.log(
+        'Share token valid, loading mind map:',
+        shareData.mind_map_id
+      );
+
+      // Get mind map info - KHÔNG dùng .single()
+      const { data: mindMapDataArray, error: mindMapError } = await supabase
+        .from('mind_maps')
+        .select('*')
+        .eq('id', shareData.mind_map_id);
+
+      console.log('Mind map result:', { mindMapDataArray, mindMapError });
+
+      if (mindMapError) {
+        console.error('Error loading mind map:', mindMapError);
+        return null;
+      }
+
+      if (!mindMapDataArray || mindMapDataArray.length === 0) {
+        console.error('Mind map not found');
+        return null;
+      }
+
+      const mindMapData = mindMapDataArray[0];
+
+      // Check if current user is the owner
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      const isOwner = user ? user.id === mindMapData.user_id : false;
+
+      console.log('Loading mind map data for:', shareData.mind_map_id);
+
+      // Load mind map data
+      const result = await mindMapService.loadMindMap(shareData.mind_map_id);
+      if (!result) {
+        console.error('Failed to load mind map data');
+        return null;
+      }
+
+      console.log('Successfully loaded shared mind map');
+
+      return {
+        mindMap: mindMapData,
+        nodes: result.nodes,
+        edges: result.edges,
+        highlightedTexts: result.highlightedTexts,
+        systemPrompt: result.systemPrompt,
+        isOwner,
+      };
+    } catch (error) {
+      console.error('Error in loadSharedMindMap:', error);
+      return null;
+    }
+  },
+
+  /**
+   * Revoke (disable) share link
+   */
+  async revokeShareLink(shareToken: string): Promise<boolean> {
+    if (!supabaseUrl || !supabaseAnonKey) {
+      return false;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('mind_map_shares')
+        .update({ is_active: false, updated_at: new Date().toISOString() })
+        .eq('share_token', shareToken);
+
+      if (error) {
+        console.error('Error revoking share link:', error);
+        throw error;
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Error in revokeShareLink:', error);
+      return false;
+    }
+  },
+
+  /**
+   * Delete share link
+   */
+  async deleteShareLink(shareToken: string): Promise<boolean> {
+    if (!supabaseUrl || !supabaseAnonKey) {
+      return false;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('mind_map_shares')
+        .delete()
+        .eq('share_token', shareToken);
+
+      if (error) {
+        console.error('Error deleting share link:', error);
+        throw error;
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Error in deleteShareLink:', error);
       return false;
     }
   },

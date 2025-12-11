@@ -410,17 +410,32 @@ export const useMindMapRedux = () => {
         // Thêm node và edge với loading state
         dispatch(addNode(newNode));
         dispatch(addEdgeAction(newEdge));
+
+        // ✨ Không đợi save to history, chạy song song với AI call
+        // Giảm latency bằng cách không block
         dispatch(saveToHistory());
 
-        // Generate content
+        // ✨ Generate content với STREAMING để update real-time
         const content = await generateRelatedContent(
           selected.text,
           parentNode.data.label,
           customPrompt,
-          systemPrompt
+          systemPrompt,
+          // Streaming callback: update node content theo thời gian thực
+          (streamedContent) => {
+            const streamNode: Node<NodeData> = {
+              ...newNode,
+              data: {
+                ...newNode.data,
+                content: streamedContent.replace(/\n/g, '<br>'),
+                isLoading: false, // ✨ TẮT loading để hiển thị content ngay
+              },
+            };
+            dispatch(updateNode(streamNode));
+          }
         );
 
-        // Cập nhật node với content và tắt loading
+        // Cập nhật node với content cuối cùng và tắt loading
         const updatedNode: Node<NodeData> = {
           ...newNode,
           data: {
@@ -567,11 +582,25 @@ export const useMindMapRedux = () => {
       dispatch(saveToHistory());
 
       try {
-        // Generate content từ OpenAI - đợi API response trước khi cập nhật
-        // Sử dụng systemPrompt từ state hiện tại
-        const content = await generateContent(topic, systemPrompt);
+        // ✨ Generate content với STREAMING để update real-time
+        const content = await generateContent(
+          topic,
+          systemPrompt,
+          // Streaming callback: update node content theo thời gian thực
+          (streamedContent) => {
+            const streamNode: Node<NodeData> = {
+              ...newNode,
+              data: {
+                ...newNode.data,
+                content: streamedContent.replace(/\n/g, '<br>'),
+                isLoading: false, // ✨ TẮT loading để hiển thị content ngay
+              },
+            };
+            dispatch(updateNode(streamNode));
+          }
+        );
 
-        // Cập nhật node với content và tắt loading
+        // Cập nhật node với content cuối cùng và tắt loading
         const updatedNode: Node<NodeData> = {
           ...newNode,
           data: {

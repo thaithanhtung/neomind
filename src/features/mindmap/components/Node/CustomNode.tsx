@@ -26,7 +26,7 @@ interface CustomNodeProps extends NodeProps {
 }
 
 export const CustomNode = memo(({ data, selected }: CustomNodeProps) => {
-  const { onTextSelected, highlightedTexts, onDeleteNode } =
+  const { onTextSelected, highlightedTexts, onDeleteNode, readOnly } =
     useMindMapContext();
   const highlights = highlightedTexts?.get(data.id) || [];
   const { settings } = useUserSettings();
@@ -158,8 +158,8 @@ export const CustomNode = memo(({ data, selected }: CustomNodeProps) => {
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      {/* NodeResizeControl với icon - chỉ hiển thị khi node được chọn hoặc hover */}
-      {(selected || isHovered) && (
+      {/* NodeResizeControl với icon - chỉ hiển thị khi node được chọn hoặc hover và KHÔNG phải readOnly */}
+      {!readOnly && (selected || isHovered) && (
         <NodeResizeControl
           style={controlStyle}
           minWidth={200}
@@ -203,8 +203,8 @@ export const CustomNode = memo(({ data, selected }: CustomNodeProps) => {
               )}
             </button>
           )}
-          {/* Delete button - chỉ hiển thị khi selected hoặc hover */}
-          {(selected || isHovered) && onDeleteNode && (
+          {/* Delete button - chỉ hiển thị khi selected hoặc hover và KHÔNG phải readOnly */}
+          {!readOnly && (selected || isHovered) && onDeleteNode && (
             <button
               onClick={handleDelete}
               className='p-2 bg-red-500 hover:bg-red-600 text-white rounded-lg shadow-lg transition-all duration-200 transform hover:scale-110 opacity-90 hover:opacity-100'
@@ -213,7 +213,8 @@ export const CustomNode = memo(({ data, selected }: CustomNodeProps) => {
               <Trash2 className='w-4 h-4' />
             </button>
           )}
-          {selected && (
+          {/* Text selectable indicator - chỉ hiển thị khi KHÔNG phải readOnly */}
+          {!readOnly && selected && (
             <div className='text-xs text-blue-600 bg-blue-100 px-2.5 py-1.5 rounded-lg font-medium shadow-sm'>
               Text selectable
             </div>

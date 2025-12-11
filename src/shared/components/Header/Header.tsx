@@ -20,11 +20,18 @@ interface HeaderProps {
   exportMenu?: React.ReactNode;
   searchBar?: React.ReactNode;
   undoRedo?: React.ReactNode;
+  shareButton?: React.ReactNode;
 }
 
 export const Header = (props: HeaderProps) => {
-  const { onShowMindMapList, onStartTour, exportMenu, searchBar, undoRedo } =
-    props;
+  const {
+    onShowMindMapList,
+    onStartTour,
+    exportMenu,
+    searchBar,
+    undoRedo,
+    shareButton,
+  } = props;
   const navigate = useNavigate();
   const { user, signOut } = useAuthRedux();
 
@@ -67,6 +74,7 @@ export const Header = (props: HeaderProps) => {
           {searchBar && <div className='hidden md:block w-64'>{searchBar}</div>}
           {undoRedo}
           {exportMenu}
+          {shareButton}
           {onStartTour && (
             <button
               onClick={onStartTour}

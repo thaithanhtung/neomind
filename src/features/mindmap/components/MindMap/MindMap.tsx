@@ -33,6 +33,7 @@ interface MindMapProps {
   onNodeClick?: (event: React.MouseEvent, node: Node) => void;
   onPaneDoubleClick?: (event: React.MouseEvent) => void;
   onReactFlowInstanceReady?: (instance: ReactFlowInstance) => void;
+  readOnly?: boolean; // Read-only mode for shared mind maps
 }
 
 export const MindMap = ({
@@ -44,6 +45,7 @@ export const MindMap = ({
   onNodeClick,
   onPaneDoubleClick,
   onReactFlowInstanceReady,
+  readOnly = false,
 }: MindMapProps) => {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const { settings } = useUserSettings();
@@ -87,9 +89,9 @@ export const MindMap = ({
   const processedNodes = useMemo(() => {
     return nodes.map((node) => ({
       ...node,
-      draggable: !node.selected,
+      draggable: readOnly ? false : !node.selected,
     }));
-  }, [nodes]);
+  }, [nodes, readOnly]);
 
   // Cập nhật màu sắc cho tất cả edges khi UI config thay đổi
   const processedEdges = useMemo(() => {
@@ -179,17 +181,19 @@ export const MindMap = ({
       <ReactFlow
         nodes={processedNodes}
         edges={processedEdges}
-        onNodesChange={onNodesChange}
-        onEdgesChange={onEdgesChange}
-        onConnect={onConnect}
+        onNodesChange={readOnly ? undefined : onNodesChange}
+        onEdgesChange={readOnly ? undefined : onEdgesChange}
+        onConnect={readOnly ? undefined : onConnect}
         nodeTypes={nodeTypes}
         defaultEdgeOptions={defaultEdgeOptions}
-        nodesConnectable={true}
+        nodesConnectable={!readOnly}
+        nodesDraggable={!readOnly}
+        elementsSelectable={!readOnly}
         selectNodesOnDrag={false}
         preventScrolling={false}
-        onNodeDragStart={handleNodeDragStart}
-        onNodeClick={onNodeClick}
-        onPaneClick={handlePaneClick}
+        onNodeDragStart={readOnly ? undefined : handleNodeDragStart}
+        onNodeClick={readOnly ? undefined : onNodeClick}
+        onPaneClick={readOnly ? undefined : handlePaneClick}
         onInit={handleReactFlowInit}
       >
         <Background

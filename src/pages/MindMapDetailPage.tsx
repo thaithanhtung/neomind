@@ -9,6 +9,8 @@ import { MindMapProvider } from '@/features/mindmap/context';
 import { useMindMapRedux } from '@/features/mindmap/hooks/useMindMapRedux';
 import { useAuthRedux } from '@/features/auth/hooks/useAuthRedux';
 import { AuthPage, EmailConfirmationPage } from '@/features/auth/components';
+import { ShareButton } from '@/features/mindmap/components/ShareButton';
+import { ModelSelector } from '@/features/user/components';
 import { analytics } from '@/shared/utils/analytics';
 import { useTour } from '@/shared/hooks/useTour';
 import {
@@ -31,6 +33,10 @@ export const MindMapDetailPage = () => {
   });
   const [showSystemPrompt, setShowSystemPrompt] = useState(() => {
     const saved = localStorage.getItem('mindmap-show-system-prompt');
+    return saved ? saved === 'true' : false;
+  });
+  const [showModelConfig, setShowModelConfig] = useState(() => {
+    const saved = localStorage.getItem('mindmap-show-model-config');
     return saved ? saved === 'true' : false;
   });
   const {
@@ -199,6 +205,11 @@ export const MindMapDetailPage = () => {
         }}
         onShowMindMapList={handleShowMindMapList}
         onStartTour={handleStartTour}
+        shareButton={
+          currentMindMapId ? (
+            <ShareButton mindMapId={currentMindMapId} />
+          ) : undefined
+        }
       />
 
       {showInput && (
@@ -246,6 +257,44 @@ export const MindMapDetailPage = () => {
           </div>
         </div>
       )}
+
+      {/* AI Model Config - Collapsible (Super Admin Only) */}
+      <div
+        className='bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 z-10'
+        data-tour='ai-model-section'
+      >
+        <button
+          onClick={() => {
+            const newValue = !showModelConfig;
+            setShowModelConfig(newValue);
+            localStorage.setItem('mindmap-show-model-config', String(newValue));
+          }}
+          className='w-full px-6 py-3 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors'
+        >
+          <div className='flex items-center gap-2'>
+            <span className='text-sm font-semibold text-gray-700 dark:text-gray-200'>
+              AI Model
+            </span>
+            <span className='text-xs text-gray-500 dark:text-gray-400'>
+              (Super Admin)
+            </span>
+          </div>
+          {showModelConfig ? (
+            <ChevronUp className='w-4 h-4 text-gray-500 dark:text-gray-400' />
+          ) : (
+            <ChevronDown className='w-4 h-4 text-gray-500 dark:text-gray-400' />
+          )}
+        </button>
+        <div
+          className={`overflow-hidden transition-all duration-300 ease-in-out ${
+            showModelConfig ? 'max-h-[600px] opacity-100' : 'max-h-0 opacity-0'
+          }`}
+        >
+          <div className='px-6 pb-4'>
+            <ModelSelector />
+          </div>
+        </div>
+      </div>
 
       {/* System Prompt config - Collapsible */}
       {currentMindMapId && (
