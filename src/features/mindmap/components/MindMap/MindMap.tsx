@@ -31,6 +31,7 @@ interface MindMapProps {
   onEdgesChange: (changes: EdgeChange[]) => void;
   onConnect: (connection: Connection) => void;
   onNodeClick?: (event: React.MouseEvent, node: Node) => void;
+  onPaneDoubleClick?: (event: React.MouseEvent) => void;
   onReactFlowInstanceReady?: (instance: ReactFlowInstance) => void;
 }
 
@@ -41,6 +42,7 @@ export const MindMap = ({
   onEdgesChange,
   onConnect,
   onNodeClick,
+  onPaneDoubleClick,
   onReactFlowInstanceReady,
 }: MindMapProps) => {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
@@ -137,13 +139,40 @@ export const MindMap = ({
     []
   );
 
-  const handlePaneClick = useCallback(() => {
-    // Clear text selection khi click vào pane (background)
-    const selection = window.getSelection();
-    if (selection) {
-      selection.removeAllRanges();
-    }
-  }, []);
+  const lastClickRef = useRef<{ time: number; x: number; y: number } | null>(
+    null
+  );
+
+  const handlePaneClick = useCallback(
+    (event: React.MouseEvent) => {
+      // Clear text selection khi click vào pane (background)
+      const selection = window.getSelection();
+      if (selection) {
+        selection.removeAllRanges();
+      }
+
+      // Detect double-click
+      const now = Date.now();
+      const clickX = event.clientX;
+      const clickY = event.clientY;
+
+      if (
+        lastClickRef.current &&
+        now - lastClickRef.current.time < 300 &&
+        Math.abs(clickX - lastClickRef.current.x) < 10 &&
+        Math.abs(clickY - lastClickRef.current.y) < 10
+      ) {
+        // Double-click detected
+        if (onPaneDoubleClick) {
+          onPaneDoubleClick(event);
+        }
+        lastClickRef.current = null;
+      } else {
+        lastClickRef.current = { time: now, x: clickX, y: clickY };
+      }
+    },
+    [onPaneDoubleClick]
+  );
 
   return (
     <div className='w-full h-full' ref={reactFlowWrapper}>
@@ -155,7 +184,7 @@ export const MindMap = ({
         onConnect={onConnect}
         nodeTypes={nodeTypes}
         defaultEdgeOptions={defaultEdgeOptions}
-        nodesConnectable={false}
+        nodesConnectable={true}
         selectNodesOnDrag={false}
         preventScrolling={false}
         onNodeDragStart={handleNodeDragStart}

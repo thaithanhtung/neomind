@@ -179,6 +179,7 @@ export const CustomNode = memo(({ data, selected }: CustomNodeProps) => {
         type='target'
         position={Position.Top}
         className='w-4 h-4 !bg-gradient-to-br !from-blue-500 !to-indigo-600 !border-2 !border-white shadow-lg'
+        data-tour='node-handle-target'
       />
 
       <div className='p-4 h-full flex flex-col overflow-hidden'>
@@ -278,6 +279,7 @@ export const CustomNode = memo(({ data, selected }: CustomNodeProps) => {
         type='source'
         position={Position.Bottom}
         className='w-4 h-4 !bg-gradient-to-br !from-blue-500 !to-indigo-600 !border-2 !border-white shadow-lg'
+        data-tour='node-handle-source'
       />
 
       {/* Hover effect gradient */}

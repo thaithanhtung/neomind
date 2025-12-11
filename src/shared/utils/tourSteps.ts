@@ -40,6 +40,18 @@ export const mindMapDetailTourSteps: TourStep[] = [
     position: 'bottom',
   },
   {
+    element: '[data-tour="tags-section"]',
+    intro:
+      'Tags: Thêm tags để phân loại và tìm kiếm mind map dễ dàng hơn. Click vào header để mở/đóng phần này.',
+    position: 'bottom',
+  },
+  {
+    element: '[data-tour="system-prompt-section"]',
+    intro:
+      'System Prompt: Tùy chỉnh cách AI tạo nội dung cho mind map này. Bạn có thể đặt prompt riêng để AI hiểu rõ hơn về chủ đề của bạn. Click vào header để mở/đóng.',
+    position: 'bottom',
+  },
+  {
     element: '[data-tour="topic-input"]',
     intro:
       'Bước 1: Tạo node đầu tiên - Nhập chủ đề hoặc câu hỏi vào đây (ví dụ: "React là gì?"). Sau đó nhấn Enter hoặc nút Send. AI sẽ tạo nội dung giải thích chi tiết và hiển thị trong một node mới.',
@@ -70,6 +82,18 @@ export const mindMapDetailTourSteps: TourStep[] = [
     position: 'top',
   },
   {
+    element: '[data-tour="mindmap-canvas"]',
+    intro:
+      'Bước 3: Tạo node bằng double-click - Bạn có thể double-click vào bất kỳ vị trí nào trên canvas để tạo node mới tại vị trí đó. Một hộp thoại sẽ xuất hiện để nhập tên node.',
+    position: 'top',
+  },
+  {
+    element: '[data-tour="mindmap-canvas"]',
+    intro:
+      'Bước 4: Kết nối các node - Sau khi có nhiều node, bạn có thể kết nối chúng bằng cách kéo từ handle ở đáy node này đến handle ở đỉnh node khác. Mỗi node có handle màu xanh để kết nối.',
+    position: 'top',
+  },
+  {
     element: '[data-tour="back-button"]',
     intro: 'Nhấn vào đây để quay lại danh sách mind maps.',
     position: 'bottom',
@@ -83,13 +107,25 @@ export const mindMapDetailWithNodesTourSteps: TourStep[] = [
   {
     element: '[data-tour="header"]',
     intro:
-      'Bạn đã có node trong mind map! Bây giờ bạn sẽ học cách mở rộng sơ đồ bằng cách tạo node con từ nội dung.',
+      'Bạn đã có node trong mind map! Bây giờ bạn sẽ học cách mở rộng sơ đồ bằng nhiều cách khác nhau.',
+    position: 'bottom',
+  },
+  {
+    element: '[data-tour="tags-section"]',
+    intro:
+      'Tags: Thêm tags để phân loại và tìm kiếm mind map dễ dàng hơn. Click vào header để mở/đóng phần này.',
+    position: 'bottom',
+  },
+  {
+    element: '[data-tour="system-prompt-section"]',
+    intro:
+      'System Prompt: Tùy chỉnh cách AI tạo nội dung cho mind map này. Bạn có thể đặt prompt riêng để AI hiểu rõ hơn về chủ đề của bạn. Click vào header để mở/đóng.',
     position: 'bottom',
   },
   {
     element: '[data-tour="node-content"]',
     intro:
-      'Bước 2: Tạo node con từ text - Click vào một node để chọn nó (bạn sẽ thấy viền xanh và badge "Text selectable"). Sau đó bôi đen từ hoặc cụm từ trong nội dung mà bạn muốn tìm hiểu thêm.',
+      'Bước 1: Tạo node con từ text - Click vào một node để chọn nó (bạn sẽ thấy viền xanh và badge "Text selectable"). Sau đó bôi đen từ hoặc cụm từ trong nội dung mà bạn muốn tìm hiểu thêm.',
     position: 'top',
   },
   {
@@ -101,7 +137,19 @@ export const mindMapDetailWithNodesTourSteps: TourStep[] = [
   {
     element: '[data-tour="mindmap-canvas"]',
     intro:
-      'Canvas của mind map. Bạn có thể kéo thả các node, zoom in/out bằng chuột giữa hoặc trackpad. Tiếp tục mở rộng sơ đồ bằng cách chọn text trong các node con để tạo node cháu.',
+      'Bước 2: Tạo node bằng double-click - Bạn có thể double-click vào bất kỳ vị trí nào trên canvas để tạo node mới tại vị trí đó. Một hộp thoại sẽ xuất hiện để nhập tên node.',
+    position: 'top',
+  },
+  {
+    element: '[data-tour="mindmap-canvas"]',
+    intro:
+      'Bước 3: Kết nối các node - Mỗi node có 2 handle: handle ở đáy (màu xanh) là điểm xuất phát, handle ở đỉnh là điểm đích. Kéo từ handle đáy của node này đến handle đỉnh của node khác để tạo kết nối.',
+    position: 'top',
+  },
+  {
+    element: '[data-tour="mindmap-canvas"]',
+    intro:
+      'Canvas của mind map. Bạn có thể kéo thả các node, zoom in/out bằng chuột giữa hoặc trackpad. Tiếp tục mở rộng sơ đồ bằng nhiều cách: chọn text, double-click, hoặc kết nối các node.',
     position: 'top',
   },
   {

@@ -163,20 +163,21 @@ export const generateRelatedContent = async (
   try {
     const systemPrompt = systemPromptOverride
       ? systemPromptOverride
-      : `Bạn là một trợ lý AI chuyên giải thích các khái niệm một cách rõ ràng và dễ hiểu.
-Hãy giải thích về khái niệm được yêu cầu dựa trên ngữ cảnh đã cho.
-Trả lời bằng tiếng Việt.`;
+      : `Bạn là trợ lý AI giải thích khái niệm rõ ràng, dễ hiểu. Trả lời bằng tiếng Việt.`;
 
     let userPrompt: string;
 
     if (customPrompt) {
-      userPrompt = `Trong ngữ cảnh của "${context}", người dùng đã chọn text "${selectedText}" và đặt câu hỏi: "${customPrompt}"
+      userPrompt = `Ngữ cảnh: "${context}"
+Text đã chọn: "${selectedText}"
+Câu hỏi: "${customPrompt}"
 
-Hãy giải thích chi tiết về "${customPrompt}" dựa trên ngữ cảnh "${context}" và text đã chọn "${selectedText}".`;
+Giải thích về "${customPrompt}" dựa trên ngữ cảnh và text đã chọn.`;
     } else {
-      userPrompt = `Trong ngữ cảnh của "${context}", người dùng đã chọn text "${selectedText}".
+      userPrompt = `Ngữ cảnh: "${context}"
+Text đã chọn: "${selectedText}"
 
-Hãy giải thích chi tiết về "${selectedText}" trong ngữ cảnh này.`;
+Giải thích về "${selectedText}" trong ngữ cảnh này.`;
     }
 
     return await callOpenAI(userPrompt, systemPrompt);

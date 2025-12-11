@@ -53,6 +53,7 @@ export const MindMapDetailPage = () => {
     undo,
     redo,
     onUpdateSystemPrompt,
+    onPaneDoubleClick,
   } = useMindMapRedux();
   const { startTour } = useTour('mindmap-detail');
   const reactFlowInstanceRef = useRef<ReactFlowInstance | null>(null);
@@ -211,7 +212,10 @@ export const MindMapDetailPage = () => {
 
       {/* Tags Input - Collapsible */}
       {currentMindMapId && (
-        <div className='bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 z-10'>
+        <div
+          className='bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 z-10'
+          data-tour='tags-section'
+        >
           <button
             onClick={() => {
               const newValue = !showTags;
@@ -245,7 +249,10 @@ export const MindMapDetailPage = () => {
 
       {/* System Prompt config - Collapsible */}
       {currentMindMapId && (
-        <div className='bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 z-10'>
+        <div
+          className='bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 z-10'
+          data-tour='system-prompt-section'
+        >
           <button
             onClick={() => {
               const newValue = !showSystemPrompt;
@@ -342,6 +349,9 @@ export const MindMapDetailPage = () => {
                 onEdgesChange={onEdgesChange}
                 onConnect={onConnect}
                 onNodeClick={handleNodeClick}
+                onPaneDoubleClick={(e) =>
+                  onPaneDoubleClick(e, reactFlowInstanceRef.current)
+                }
                 onReactFlowInstanceReady={(instance) => {
                   reactFlowInstanceRef.current = instance;
                 }}

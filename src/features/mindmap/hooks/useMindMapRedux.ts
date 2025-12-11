@@ -8,6 +8,7 @@ import {
   applyNodeChanges,
   applyEdgeChanges,
   addEdge,
+  ReactFlowInstance,
 } from 'reactflow';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import {
@@ -531,19 +532,19 @@ export const useMindMapRedux = () => {
   );
 
   const handleCreateNode = useCallback(
-    async (topic: string) => {
+    async (topic: string, position?: { x: number; y: number }) => {
       if (!mindMapId) {
         throw new Error('Chưa chọn mind map');
       }
 
       const newNodeId = createNodeId();
-      const position = getInitialNodePosition();
+      const nodePosition = position || getInitialNodePosition();
 
       // Tạo node với loading state trước
       const newNode: Node<NodeData> = {
         id: newNodeId,
         type: 'custom',
-        position,
+        position: nodePosition,
         width: 400,
         height: 300,
         data: {
@@ -594,6 +595,46 @@ export const useMindMapRedux = () => {
     [mindMapId, dispatch, systemPrompt]
   );
 
+  const handlePaneDoubleClick = useCallback(
+    async (
+      event: React.MouseEvent,
+      reactFlowInstance: ReactFlowInstance | null
+    ) => {
+      if (!mindMapId || !reactFlowInstance) {
+        return;
+      }
+
+      // Lấy vị trí click trên viewport
+      const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+      const x = event.clientX - rect.left;
+      const y = event.clientY - rect.top;
+
+      // Convert sang tọa độ trong flow
+      const position = reactFlowInstance.screenToFlowPosition({
+        x,
+        y,
+      });
+
+      // Điều chỉnh để node xuất hiện ở giữa điểm click
+      const adjustedPosition = {
+        x: position.x - 200, // Trừ đi một nửa width của node (400/2)
+        y: position.y - 150, // Trừ đi một nửa height của node (300/2)
+      };
+
+      // Prompt user để nhập topic
+      const topic = prompt('Nhập tên cho node mới:', 'Untitled Node');
+      if (topic && topic.trim()) {
+        try {
+          await handleCreateNode(topic.trim(), adjustedPosition);
+        } catch (error) {
+          console.error('Error creating node from double-click:', error);
+          alert('Có lỗi xảy ra khi tạo node mới. Vui lòng thử lại.');
+        }
+      }
+    },
+    [mindMapId, handleCreateNode]
+  );
+
   const handleUndo = useCallback(() => {
     dispatch(undoAction());
   }, [dispatch]);
@@ -637,6 +678,7 @@ export const useMindMapRedux = () => {
     onUpdateMindMapTitle: handleUpdateTitle,
     onDeleteMindMap: handleDeleteMindMap,
     onUpdateSystemPrompt: handleUpdateSystemPrompt,
+    onPaneDoubleClick: handlePaneDoubleClick,
     undo: handleUndo,
     redo: handleRedo,
     canUndo,
