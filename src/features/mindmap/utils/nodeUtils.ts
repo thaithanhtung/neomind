@@ -29,27 +29,27 @@ export const getNodePosition = (
   );
 
   // Khoảng cách giữa các node
-  const spacingX = newNodeWidth + 50;
-  const spacingY = newNodeHeight + 50;
+  const spacingX = newNodeWidth + 80;
+  const spacingY = newNodeHeight + 80;
 
   // Vị trí mặc định: đặt node con ở dưới node cha, căn giữa theo chiều ngang
   let newX = parentX + parentWidth / 2 - newNodeWidth / 2;
   let newY = parentY + parentHeight + spacingY / 2;
 
-  // Nếu đã có node con, phân bố đều quanh node cha
+  // Nếu đã có node con, sắp xếp các node con thành một hàng ngang phía dưới node cha
   if (childNodes.length > 0) {
-    const childCount = childNodes.length;
-    
-    // Tính góc để phân bố đều trên vòng tròn (bắt đầu từ dưới)
-    const angleStep = (2 * Math.PI) / (childCount + 1);
-    const angle = angleStep * (childCount + 1) - Math.PI / 2; // Bắt đầu từ dưới
-    
-    // Bán kính để đặt node con (khoảng cách từ tâm node cha)
-    const radius = Math.max(parentWidth, parentHeight) + spacingX;
-    
-    // Tính vị trí dựa trên góc và bán kính
-    newX = parentX + parentWidth / 2 + Math.cos(angle) * radius - newNodeWidth / 2;
-    newY = parentY + parentHeight / 2 + Math.sin(angle) * radius - newNodeHeight / 2;
+    const childIndex = childNodes.length; // index của node mới trong danh sách con
+    const totalChildren = childNodes.length + 1;
+
+    // Tổng chiều rộng mà hàng con chiếm (theo spacingX)
+    const totalWidth = (totalChildren - 1) * spacingX;
+
+    // Căn giữa hàng con so với tâm node cha
+    const centerX = parentX + parentWidth / 2 - newNodeWidth / 2;
+    const startX = centerX - totalWidth / 2;
+
+    newX = startX + childIndex * spacingX;
+    newY = parentY + parentHeight + spacingY / 2;
   }
 
   // Kiểm tra và điều chỉnh để tránh overlap với các node khác
@@ -102,5 +102,128 @@ export const getInitialNodePosition = (
     x: viewportWidth / 2 - 200, // Trừ đi một nửa width của node (400/2)
     y: viewportHeight / 2 - 150, // Trừ đi một nửa height của node (300/2)
   };
+};
+
+/**
+ * Auto arrange toàn bộ các node theo dạng cây đơn giản:
+ * - Dựa vào level trong NodeData
+ * - Mỗi level là một hàng ngang
+ * - Các node trong cùng level được căn giữa theo trục X
+ */
+export const autoArrangeNodes = (
+  nodes: Node<NodeData>[],
+  options?: {
+    spacingX?: number;
+    spacingY?: number;
+  }
+): Node<NodeData>[] => {
+  if (!nodes || nodes.length === 0) return nodes;
+
+  // Khoảng cách tối thiểu giữa các node
+  const spacingX = options?.spacingX ?? 120;
+  const spacingY = options?.spacingY ?? 140;
+
+  // Group nodes theo level (mặc định level 0 nếu không có)
+  const levels = new Map<number, Node<NodeData>[]>();
+
+  nodes.forEach((node) => {
+    const level = (node.data && typeof node.data.level === 'number')
+      ? node.data.level
+      : 0;
+    if (!levels.has(level)) {
+      levels.set(level, []);
+    }
+    levels.get(level)!.push(node);
+  });
+
+  const sortedLevels = Array.from(levels.entries()).sort(
+    ([a], [b]) => a - b
+  );
+
+  const newNodes: Node<NodeData>[] = [];
+  let globalMinX = Infinity;
+  let globalMinY = Infinity;
+
+  sortedLevels.forEach(([level, levelNodes]) => {
+    if (levelNodes.length === 0) return;
+
+    // Sắp xếp node trong cùng level theo parentId để siblings gần nhau hơn
+    const sortedNodes = [...levelNodes].sort((a, b) => {
+      const aParent = (a.data as NodeData).parentId || '';
+      const bParent = (b.data as NodeData).parentId || '';
+      if (aParent === bParent) {
+        return a.id.localeCompare(b.id);
+      }
+      return aParent.localeCompare(bParent);
+    });
+
+    const count = sortedNodes.length;
+
+    // Tính width/height thực tế của từng node trong level
+    const widths = sortedNodes.map((node) => {
+      const dataWidth = (node.data as NodeData)?.width;
+      const runtimeWidth = node.width;
+      return dataWidth ?? runtimeWidth ?? 400;
+    });
+
+    const heights = sortedNodes.map((node) => {
+      const dataHeight = (node.data as NodeData)?.height;
+      const runtimeHeight = node.height;
+      return dataHeight ?? runtimeHeight ?? 300;
+    });
+
+    // Tổng chiều rộng cả hàng (node + khoảng trống giữa)
+    const totalNodesWidth = widths.reduce((sum, w) => sum + w, 0);
+    const totalGapsWidth = (count - 1) * spacingX;
+    const totalWidth = totalNodesWidth + totalGapsWidth;
+
+    // Căn giữa cả hàng quanh trục X = 0 (sau đó sẽ dịch sang dương)
+    const startX = -totalWidth / 2;
+
+    // Dùng max height của level để tính khoảng cách dọc giữa các level
+    const maxHeight = heights.length > 0 ? Math.max(...heights) : 300;
+    const y = level * (maxHeight + spacingY);
+
+    // currentX là toạ độ LEFT của node (ReactFlow dùng top-left)
+    let currentX = startX;
+
+    sortedNodes.forEach((node, index) => {
+      const width = widths[index] ?? 400;
+      const x = currentX;
+
+      const updatedNode: Node<NodeData> = {
+        ...node,
+        position: {
+          x,
+          y,
+        },
+      };
+
+      globalMinX = Math.min(globalMinX, x);
+      globalMinY = Math.min(globalMinY, y);
+
+      newNodes.push(updatedNode);
+
+      // Di chuyển currentX sang phải: width node hiện tại + spacing
+      currentX += width + spacingX;
+    });
+  });
+
+  // Dịch toàn bộ layout sang vùng tọa độ dương, chừa padding
+  const padding = 50;
+  if (globalMinX === Infinity || globalMinY === Infinity) {
+    return newNodes;
+  }
+
+  const offsetX = globalMinX < 0 ? -globalMinX + padding : padding;
+  const offsetY = globalMinY < 0 ? -globalMinY + padding : padding;
+
+  return newNodes.map((node) => ({
+    ...node,
+    position: {
+      x: node.position.x + offsetX,
+      y: node.position.y + offsetY,
+    },
+  }));
 };
 

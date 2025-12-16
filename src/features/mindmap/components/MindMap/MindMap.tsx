@@ -195,6 +195,8 @@ export const MindMap = ({
         onNodeClick={readOnly ? undefined : onNodeClick}
         onPaneClick={readOnly ? undefined : handlePaneClick}
         onInit={handleReactFlowInit}
+        // Cho phép zoom out xa hơn
+        minZoom={0.1}
       >
         <Background
           color={uiConfig.backgroundColor}

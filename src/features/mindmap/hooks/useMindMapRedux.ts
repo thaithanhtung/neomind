@@ -47,6 +47,7 @@ import {
   createEdgeId,
   getNodePosition,
   getInitialNodePosition,
+  autoArrangeNodes,
 } from '@/features/mindmap/utils/nodeUtils';
 import { analytics } from '@/shared/utils/analytics';
 
@@ -681,6 +682,19 @@ export const useMindMapRedux = () => {
     [dispatch, mindMapId]
   );
 
+  // Auto arrange tất cả các node hiện tại
+  const handleAutoArrange = useCallback(() => {
+    dispatch((dispatch, getState) => {
+      const state = getState().mindMap;
+      const currentNodes = state.nodes as Node<NodeData>[];
+      if (!currentNodes || currentNodes.length === 0) return;
+
+      const arrangedNodes = autoArrangeNodes(currentNodes);
+      dispatch(setNodes(arrangedNodes));
+      dispatch(saveToHistory());
+    });
+  }, [dispatch]);
+
   const canUndo = historyIndex > 0;
   const canRedo = historyIndex < history.length - 1;
 
@@ -712,5 +726,6 @@ export const useMindMapRedux = () => {
     redo: handleRedo,
     canUndo,
     canRedo,
+    onAutoArrange: handleAutoArrange,
   };
 };

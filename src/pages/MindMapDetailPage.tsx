@@ -60,6 +60,7 @@ export const MindMapDetailPage = () => {
     redo,
     onUpdateSystemPrompt,
     onPaneDoubleClick,
+    onAutoArrange,
   } = useMindMapRedux();
   const { startTour } = useTour('mindmap-detail');
   const reactFlowInstanceRef = useRef<ReactFlowInstance | null>(null);
@@ -383,9 +384,20 @@ export const MindMapDetailPage = () => {
           </div>
         ) : (
           <div
-            className='w-full h-full animate-fadeIn'
+            className='w-full h-full animate-fadeIn relative'
             data-tour='mindmap-canvas'
           >
+            {/* Nút Auto arrange */}
+            <div className='absolute top-4 right-4 z-20'>
+              <button
+                onClick={onAutoArrange}
+                className='px-3 py-1.5 text-xs md:text-sm rounded-full bg-white/90 border border-gray-200 shadow-sm hover:bg-gray-50 hover:shadow-md transition-all text-gray-700'
+                title='Tự động sắp xếp các node cho gọn gàng'
+              >
+                Auto arrange
+              </button>
+            </div>
+
             <MindMapProvider
               onTextSelected={handleTextSelected}
               highlightedTexts={highlightedTexts}
