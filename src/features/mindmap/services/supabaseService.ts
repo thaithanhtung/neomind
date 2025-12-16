@@ -727,21 +727,16 @@ export const mindMapService = {
     isOwner: boolean;
   } | null> {
     if (!supabaseUrl || !supabaseAnonKey) {
-      console.warn('Supabase not configured');
       return null;
     }
 
     try {
-      console.log('Loading shared mind map with token:', shareToken);
-
       // Verify share token - KHÔNG dùng .single() để tránh lỗi
       const { data: shareDataArray, error: shareError } = await supabase
         .from('mind_map_shares')
         .select('mind_map_id, is_active, expires_at')
         .eq('share_token', shareToken)
         .eq('is_active', true);
-
-      console.log('Share data result:', { shareDataArray, shareError });
 
       if (shareError) {
         console.error('Error fetching share token:', shareError);
@@ -762,18 +757,11 @@ export const mindMapService = {
         return null;
       }
 
-      console.log(
-        'Share token valid, loading mind map:',
-        shareData.mind_map_id
-      );
-
       // Get mind map info - KHÔNG dùng .single()
       const { data: mindMapDataArray, error: mindMapError } = await supabase
         .from('mind_maps')
         .select('*')
         .eq('id', shareData.mind_map_id);
-
-      console.log('Mind map result:', { mindMapDataArray, mindMapError });
 
       if (mindMapError) {
         console.error('Error loading mind map:', mindMapError);
@@ -793,16 +781,12 @@ export const mindMapService = {
       } = await supabase.auth.getUser();
       const isOwner = user ? user.id === mindMapData.user_id : false;
 
-      console.log('Loading mind map data for:', shareData.mind_map_id);
-
       // Load mind map data
       const result = await mindMapService.loadMindMap(shareData.mind_map_id);
       if (!result) {
         console.error('Failed to load mind map data');
         return null;
       }
-
-      console.log('Successfully loaded shared mind map');
 
       return {
         mindMap: mindMapData,

@@ -12,7 +12,9 @@
     "@reactflow/node-resizer": "^2.2.14",
     "@reduxjs/toolkit": "^2.11.0",
     "@supabase/supabase-js": "^2.86.2",
+    "@types/dompurify": "^3.0.5",
     "@types/intro.js": "^5.1.5",
+    "dompurify": "^3.3.1",
     "html2canvas": "^1.4.1",
     "intro.js": "^8.3.2",
     "jspdf": "^3.0.4",
@@ -23,7 +25,9 @@
     "react-ga4": "^2.1.0",
     "react-redux": "^9.2.0",
     "react-router-dom": "^7.10.1",
-    "reactflow": "^11.10.4"
+    "reactflow": "^11.10.4",
+    "web-vitals": "^5.1.0",
+    "zod": "^4.2.0"
   },
   "devDependencies": {
     "@types/node": "^24.10.1",

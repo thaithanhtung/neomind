@@ -24,47 +24,75 @@ export const useTextSelection = ({
     left: 0,
   });
   const savedRangeRef = useRef<Range | null>(null);
+  const showAddButtonRef = useRef(false);
 
   const handleCancel = useCallback(() => {
     setShowAddButton(false);
+    showAddButtonRef.current = false;
     setSelectedText(null);
     savedRangeRef.current = null;
-    window.getSelection()?.removeAllRanges();
+    // Clear cả visual selection (bôi đen)
+    const selection = window.getSelection();
+    if (selection) {
+      selection.removeAllRanges();
+      // Force blur để đảm bảo selection được clear hoàn toàn
+      if (selection.rangeCount > 0) {
+        selection.removeAllRanges();
+      }
+    }
   }, []);
 
   useEffect(() => {
     const handleMouseUp = (event: MouseEvent) => {
+      // Kiểm tra ngay xem click có trong contentRef không
+      const target = event.target as Node;
+      const isClickInContent =
+        contentRef.current && contentRef.current.contains(target);
+
+      // Nếu click ra ngoài contentRef và đang show button, clear ngay lập tức
+      if (!isClickInContent && showAddButtonRef.current) {
+        handleCancel();
+        return;
+      }
+
       // Delay để đảm bảo selection đã được set
       setTimeout(() => {
         if (!contentRef.current) {
           setShowAddButton(false);
+          showAddButtonRef.current = false;
           return;
         }
 
         const selection = window.getSelection();
         if (!selection || selection.rangeCount === 0) {
-          // Không clear ngay, đợi handleClickOutside xử lý
+          // Nếu không có selection và đang show button, clear
+          if (showAddButtonRef.current) {
+            handleCancel();
+          }
           return;
         }
 
         const range = selection.getRangeAt(0);
         const selectedTextValue = range.toString().trim();
-
         if (selectedTextValue.length === 0) {
-          // Không clear ngay, đợi handleClickOutside xử lý
+          // Nếu không có text được chọn và đang show button, clear
+          if (showAddButtonRef.current) {
+            handleCancel();
+          }
           return;
         }
 
-        // Kiểm tra xem selection có trong contentRef không
+        // Kiểm tra xem selection có trong contentRef của NODE HIỆN TẠI không
         const isInContent =
           contentRef.current.contains(range.commonAncestorContainer) ||
           contentRef.current.contains(range.startContainer) ||
           contentRef.current.contains(range.endContainer) ||
           (event.target && contentRef.current.contains(event.target as Node));
-
         if (!isInContent) {
-          setShowAddButton(false);
-          setSelectedText(null);
+          // 👉 Nếu selection KHÔNG thuộc node hiện tại:
+          // - Không được phép gọi handleCancel() ở đây
+          // - Vì hook này được mount cho MỌI node, các node khác sẽ nhận mouseup
+          //   nhưng không phải node đang được bôi đen → chỉ cần bỏ qua
           return;
         }
 
@@ -146,6 +174,7 @@ export const useTextSelection = ({
         savedRangeRef.current = range.cloneRange();
 
         setShowAddButton(true);
+        showAddButtonRef.current = true;
 
         // Đảm bảo selection vẫn được giữ sau khi button hiển thị
         // Restore selection nếu bị mất do event nào đó
@@ -186,26 +215,18 @@ export const useTextSelection = ({
       }
 
       // Đợi một chút để đảm bảo text selection đã hoàn thành
-      // Tăng delay để tránh conflict với mouseup handler
+      // Nhưng không quá lâu để UX tốt hơn
       setTimeout(() => {
-        const selection = window.getSelection();
-
         // Nếu click bên ngoài contentRef, luôn clear selection và ẩn button
         if (contentRef.current && !contentRef.current.contains(target)) {
-          // Kiểm tra lại selection trước khi clear
-          if (
-            !selection ||
-            selection.rangeCount === 0 ||
-            selection.toString().trim().length === 0
-          ) {
-            handleCancel();
-          }
+          handleCancel();
           return;
         }
 
         // Nếu click vào contentRef nhưng không có selection hoặc selection rỗng
         // thì cũng clear selection và ẩn button
         if (contentRef.current && contentRef.current.contains(target)) {
+          const selection = window.getSelection();
           if (
             !selection ||
             selection.rangeCount === 0 ||
@@ -220,7 +241,7 @@ export const useTextSelection = ({
             }
           }
         }
-      }, 200); // Tăng delay để tránh conflict với mouseup handler
+      }, 100); // Giảm delay để UX tốt hơn
     };
 
     // Sử dụng capture phase để handle trước
@@ -232,7 +253,7 @@ export const useTextSelection = ({
       document.removeEventListener('mouseup', handleMouseUp, true);
       document.removeEventListener('click', handleClickOutside, false);
     };
-  }, [nodeId, content, handleCancel, contentRef, modalRef, showAddButton]);
+  }, [nodeId, content, handleCancel, contentRef, modalRef]);
 
   useEffect(() => {
     if (showAddButton && contentRef.current) {
@@ -328,6 +349,11 @@ export const useTextSelection = ({
       };
     }
   }, [showAddButton, contentRef]);
+
+  // Đồng bộ ref với state
+  useEffect(() => {
+    showAddButtonRef.current = showAddButton;
+  }, [showAddButton]);
 
   return {
     selectedText,

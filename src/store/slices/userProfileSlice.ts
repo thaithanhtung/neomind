@@ -39,11 +39,9 @@ export const loadUserProfile = createAsyncThunk<
     state.userProfile.lastFetched &&
     now - state.userProfile.lastFetched < CACHE_DURATION
   ) {
-    console.log('✅ Using cached user profile');
     return state.userProfile.profile;
   }
 
-  console.log('🔄 Fetching user profile from database...');
   const profile = await userProfileService.getCurrentUserProfile();
   return profile;
 });

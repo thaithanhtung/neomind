@@ -19,7 +19,6 @@ function AppRoutes() {
 
   // ✨ Pre-fetch user profile ngay khi app load
   useEffect(() => {
-    console.log('🚀 Pre-fetching user profile...');
     dispatch(loadUserProfile({ force: false }));
   }, [dispatch]);
 
