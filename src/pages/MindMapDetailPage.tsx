@@ -20,7 +20,7 @@ import {
 import { TagInput } from '@/shared/components/TagInput';
 import { useKeyboardShortcuts } from '@/shared/hooks/useKeyboardShortcuts';
 import { ReactFlowInstance } from 'reactflow';
-import { ChevronDown, ChevronUp } from 'lucide-react';
+import { ChevronDown, ChevronUp, Settings2 } from 'lucide-react';
 
 export const MindMapDetailPage = () => {
   const { id } = useParams<{ id: string }>();
@@ -66,6 +66,8 @@ export const MindMapDetailPage = () => {
   const reactFlowInstanceRef = useRef<ReactFlowInstance | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [localSystemPrompt, setLocalSystemPrompt] = useState('');
+  const [showConfigModal, setShowConfigModal] = useState(false);
+  const [showSystemPromptSaved, setShowSystemPromptSaved] = useState(false);
 
   // Lấy selected node để xóa
   const selectedNode = nodes.find((n) => n.selected);
@@ -222,148 +224,16 @@ export const MindMapDetailPage = () => {
         </div>
       )}
 
-      {/* Tags Input - Collapsible */}
+      {/* Thanh cấu hình mở modal */}
       {currentMindMapId && (
-        <div
-          className='bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 z-10'
-          data-tour='tags-section'
-        >
+        <div className='bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 z-10 px-6 py-3 flex items-center justify-end'>
           <button
-            onClick={() => {
-              const newValue = !showTags;
-              setShowTags(newValue);
-              localStorage.setItem('mindmap-show-tags', String(newValue));
-            }}
-            className='w-full px-6 py-3 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors'
+            onClick={() => setShowConfigModal(true)}
+            className='inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-100 text-sm font-semibold hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors'
           >
-            <div className='flex items-center gap-2'>
-              <span className='text-sm font-semibold text-gray-700 dark:text-gray-200'>
-                Tags
-              </span>
-            </div>
-            {showTags ? (
-              <ChevronUp className='w-4 h-4 text-gray-500 dark:text-gray-400' />
-            ) : (
-              <ChevronDown className='w-4 h-4 text-gray-500 dark:text-gray-400' />
-            )}
+            <Settings2 className='w-4 h-4' />
+            Cấu hình mind map
           </button>
-          <div
-            className={`overflow-hidden transition-all duration-300 ease-in-out ${
-              showTags ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
-            }`}
-          >
-            <div className='px-6 pb-4'>
-              <TagInput mindMapId={currentMindMapId} />
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* AI Model Config - Collapsible (Super Admin Only) */}
-      <div
-        className='bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 z-10'
-        data-tour='ai-model-section'
-      >
-        <button
-          onClick={() => {
-            const newValue = !showModelConfig;
-            setShowModelConfig(newValue);
-            localStorage.setItem('mindmap-show-model-config', String(newValue));
-          }}
-          className='w-full px-6 py-3 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors'
-        >
-          <div className='flex items-center gap-2'>
-            <span className='text-sm font-semibold text-gray-700 dark:text-gray-200'>
-              AI Model
-            </span>
-            <span className='text-xs text-gray-500 dark:text-gray-400'>
-              (Super Admin)
-            </span>
-          </div>
-          {showModelConfig ? (
-            <ChevronUp className='w-4 h-4 text-gray-500 dark:text-gray-400' />
-          ) : (
-            <ChevronDown className='w-4 h-4 text-gray-500 dark:text-gray-400' />
-          )}
-        </button>
-        <div
-          className={`overflow-hidden transition-all duration-300 ease-in-out ${
-            showModelConfig ? 'max-h-[600px] opacity-100' : 'max-h-0 opacity-0'
-          }`}
-        >
-          <div className='px-6 pb-4'>
-            <ModelSelector />
-          </div>
-        </div>
-      </div>
-
-      {/* System Prompt config - Collapsible */}
-      {currentMindMapId && (
-        <div
-          className='bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 z-10'
-          data-tour='system-prompt-section'
-        >
-          <button
-            onClick={() => {
-              const newValue = !showSystemPrompt;
-              setShowSystemPrompt(newValue);
-              localStorage.setItem(
-                'mindmap-show-system-prompt',
-                String(newValue)
-              );
-            }}
-            className='w-full px-6 py-3 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors'
-          >
-            <div className='flex items-center gap-2'>
-              <span className='text-sm font-semibold text-gray-700 dark:text-gray-200'>
-                System Prompt
-              </span>
-              <span className='text-xs text-gray-500 dark:text-gray-400'>
-                (từng mind map)
-              </span>
-            </div>
-            {showSystemPrompt ? (
-              <ChevronUp className='w-4 h-4 text-gray-500 dark:text-gray-400' />
-            ) : (
-              <ChevronDown className='w-4 h-4 text-gray-500 dark:text-gray-400' />
-            )}
-          </button>
-          <div
-            className={`overflow-hidden transition-all duration-300 ease-in-out ${
-              showSystemPrompt ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
-            }`}
-          >
-            <div className='px-6 pb-4'>
-              <div className='flex items-start justify-between gap-4'>
-                <div className='flex-1'>
-                  <textarea
-                    value={localSystemPrompt}
-                    onChange={(e) => setLocalSystemPrompt(e.target.value)}
-                    onBlur={() => onUpdateSystemPrompt(localSystemPrompt)}
-                    onMouseDown={(e) => {
-                      // Tránh các handler bên ngoài cản focus
-                      e.stopPropagation();
-                    }}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      const target = e.currentTarget;
-                      // Đảm bảo focus khi click
-                      requestAnimationFrame(() => target.focus());
-                    }}
-                    placeholder='Nhập system prompt cho AI khi tạo nội dung cho mind map này'
-                    className='w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl focus:border-blue-400 focus:ring-4 focus:ring-blue-100 dark:focus:ring-blue-900 focus:outline-none text-sm resize-none transition-all duration-200 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500'
-                    rows={3}
-                  />
-                </div>
-                <button
-                  onClick={() => onUpdateSystemPrompt(localSystemPrompt)}
-                  className='self-start mt-7 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-semibold'
-                >
-                  Lưu
-                </button>
-              </div>
-            </div>
-          </div>
         </div>
       )}
 
@@ -387,7 +257,7 @@ export const MindMapDetailPage = () => {
             className='w-full h-full animate-fadeIn relative'
             data-tour='mindmap-canvas'
           >
-            {/* Nút Auto arrange */}
+            {/* Nút Auto arrange đơn giản (tree dọc) */}
             <div className='absolute top-4 right-4 z-20'>
               <button
                 onClick={onAutoArrange}
@@ -421,6 +291,132 @@ export const MindMapDetailPage = () => {
           </div>
         )}
       </div>
+
+      {/* Modal cấu hình: Tags, AI Model, System Prompt */}
+      {showConfigModal && (
+        <div
+          className='fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center animate-fadeIn'
+          onClick={() => setShowConfigModal(false)}
+        >
+          <div
+            className='bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-200/60 dark:border-gray-700/60 max-w-5xl w-full mx-4 max-h-[85vh] overflow-hidden flex flex-col'
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className='px-6 py-4 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between'>
+              <div className='flex items-center gap-2'>
+                <div className='p-2 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-md'>
+                  <Settings2 className='w-4 h-4' />
+                </div>
+                <div>
+                  <h2 className='text-base md:text-lg font-semibold text-gray-900 dark:text-gray-50'>
+                    Cấu hình mind map
+                  </h2>
+                  <p className='text-xs md:text-sm text-gray-500 dark:text-gray-400'>
+                    Tags, AI model và system prompt cho mind map hiện tại
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowConfigModal(false)}
+                className='px-3 py-1.5 text-xs md:text-sm rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors'
+              >
+                Đóng
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className='px-6 py-4 space-y-6 overflow-y-auto'>
+              {/* Tags */}
+              {currentMindMapId && (
+                <div>
+                  <h3 className='text-sm font-semibold text-gray-800 dark:text-gray-100 mb-2'>
+                    Tags
+                  </h3>
+                  <p className='text-xs text-gray-500 dark:text-gray-400 mb-3'>
+                    Gắn thẻ cho mind map để tìm kiếm và phân loại nhanh hơn.
+                  </p>
+                  <div className='bg-gray-50 dark:bg-gray-800/70 rounded-xl border border-gray-200 dark:border-gray-700 px-4 py-3'>
+                    <TagInput mindMapId={currentMindMapId} />
+                  </div>
+                </div>
+              )}
+
+              {/* AI Model */}
+              <div>
+                <h3 className='text-sm font-semibold text-gray-800 dark:text-gray-100 mb-2'>
+                  AI Model{' '}
+                  <span className='text-xs text-gray-500 dark:text-gray-400'>
+                    (Super Admin)
+                  </span>
+                </h3>
+                <p className='text-xs text-gray-500 dark:text-gray-400 mb-3'>
+                  Chọn model AI mặc định dùng để sinh nội dung cho các node.
+                </p>
+                <div className='bg-gray-50 dark:bg-gray-800/70 rounded-xl border border-gray-200 dark:border-gray-700 px-4 py-3'>
+                  <ModelSelector />
+                </div>
+              </div>
+
+              {/* System Prompt */}
+              {currentMindMapId && (
+                <div>
+                  <h3 className='text-sm font-semibold text-gray-800 dark:text-gray-100 mb-2'>
+                    System Prompt{' '}
+                    <span className='text-xs text-gray-500 dark:text-gray-400'>
+                      (riêng cho mind map này)
+                    </span>
+                  </h3>
+                  <p className='text-xs text-gray-500 dark:text-gray-400 mb-3'>
+                    Tuỳ chỉnh system prompt để điều khiển cách AI sinh nội dung
+                    cho sơ đồ này.
+                  </p>
+                  <div className='bg-gray-50 dark:bg-gray-800/70 rounded-xl border border-gray-200 dark:border-gray-700 px-4 py-3'>
+                    <div className='flex flex-col gap-3'>
+                      <textarea
+                        value={localSystemPrompt}
+                        onChange={(e) => setLocalSystemPrompt(e.target.value)}
+                        onBlur={() => {
+                          onUpdateSystemPrompt(localSystemPrompt);
+                          setShowSystemPromptSaved(true);
+                          setTimeout(() => setShowSystemPromptSaved(false), 2000);
+                        }}
+                        placeholder='Nhập system prompt cho AI khi tạo nội dung cho mind map này'
+                        className='w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl focus:border-blue-400 focus:ring-4 focus:ring-blue-100 dark:focus:ring-blue-900 focus:outline-none text-sm resize-none transition-all duration-200 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 min-h-[96px]'
+                        rows={3}
+                      />
+                      <div className='flex justify-end'>
+                        <button
+                          onClick={() => {
+                            onUpdateSystemPrompt(localSystemPrompt);
+                            setShowSystemPromptSaved(true);
+                            setTimeout(
+                              () => setShowSystemPromptSaved(false),
+                              2000
+                            );
+                          }}
+                          className='px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-xs md:text-sm font-semibold'
+                        >
+                          Lưu system prompt
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Toast thông báo lưu system prompt thành công */}
+      {showSystemPromptSaved && (
+        <div className='fixed bottom-4 right-4 z-50'>
+          <div className='px-4 py-3 bg-green-500 text-white text-sm rounded-lg shadow-lg'>
+            Đã lưu system prompt thành công.
+          </div>
+        </div>
+      )}
     </div>
   );
 };

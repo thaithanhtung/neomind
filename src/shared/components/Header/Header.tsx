@@ -44,34 +44,36 @@ export const Header = (props: HeaderProps) => {
 
   return (
     <header
-      className='bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700 px-6 py-4 z-10'
+      className='bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700 px-4 py-3 md:px-6 md:py-4 z-10'
       data-tour='header'
     >
-      <div className='flex items-center justify-between max-w-7xl mx-auto'>
+      <div className='flex items-center justify-between max-w-7xl mx-auto gap-3 md:gap-6 flex-wrap'>
         <button
           onClick={() => {
             navigate('/');
             analytics.trackMindMapListView();
           }}
-          className='flex items-center gap-3 hover:opacity-80 transition-opacity cursor-pointer'
+          className='flex items-center gap-2 md:gap-3 hover:opacity-80 transition-opacity cursor-pointer'
           data-tour='header-title'
           title='Về trang chủ'
         >
           <div className='p-2 bg-blue-600 rounded-lg'>
-            <Brain className='w-6 h-6 text-white' />
+            <Brain className='w-5 h-5 md:w-6 md:h-6 text-white' />
           </div>
           <div>
-            <h1 className='text-2xl font-bold text-gray-900 dark:text-white'>
+            <h1 className='text-xl md:text-2xl font-bold text-gray-900 dark:text-white'>
               NeoMind
             </h1>
-            <p className='text-sm text-gray-500 dark:text-gray-400'>
+            <p className='hidden sm:block text-xs md:text-sm text-gray-500 dark:text-gray-400'>
               Sơ đồ tư duy thông minh
             </p>
           </div>
         </button>
 
-        <div className='flex items-center gap-4'>
-          {searchBar && <div className='hidden md:block w-64'>{searchBar}</div>}
+        <div className='flex items-center gap-2 md:gap-4 flex-wrap justify-end flex-1 min-w-0'>
+          {searchBar && (
+            <div className='hidden md:block w-40 lg:w-64'>{searchBar}</div>
+          )}
           {undoRedo}
           {exportMenu}
           {shareButton}
@@ -82,7 +84,9 @@ export const Header = (props: HeaderProps) => {
               title='Hướng dẫn sử dụng'
             >
               <HelpCircle className='w-4 h-4' />
-              <span className='hidden sm:inline'>Hướng dẫn</span>
+              <span className='hidden sm:inline text-xs md:text-sm'>
+                Hướng dẫn
+              </span>
             </button>
           )}
           {onShowMindMapList ? (
@@ -96,7 +100,9 @@ export const Header = (props: HeaderProps) => {
               data-tour='back-button'
             >
               <FolderOpen className='w-4 h-4' />
-              <span className='hidden sm:inline'>Mind Maps</span>
+              <span className='hidden sm:inline text-xs md:text-sm'>
+                Mind Maps
+              </span>
             </button>
           ) : (
             <button
@@ -108,23 +114,27 @@ export const Header = (props: HeaderProps) => {
               title='Về trang chủ'
             >
               <Home className='w-4 h-4' />
-              <span className='hidden sm:inline'>Trang chủ</span>
+              <span className='hidden sm:inline text-xs md:text-sm'>
+                Trang chủ
+              </span>
             </button>
           )}
 
           {user && (
-            <div className='flex items-center gap-3'>
+            <div className='flex items-center gap-2 md:gap-3'>
               <button
                 onClick={() => navigate('/profile')}
                 className='flex items-center gap-2 px-4 py-2 text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors'
                 title='Hồ sơ'
               >
                 <Settings className='w-4 h-4' />
-                <span className='hidden sm:inline'>Cài đặt</span>
+                <span className='hidden sm:inline text-xs md:text-sm'>
+                  Cài đặt
+                </span>
               </button>
-              <div className='flex items-center gap-2 text-sm text-gray-600'>
+              <div className='hidden md:flex items-center gap-2 text-xs md:text-sm text-gray-600 max-w-[150px]'>
                 <User className='w-4 h-4' />
-                <span className='max-w-[150px] truncate'>{user.email}</span>
+                <span className='truncate'>{user.email}</span>
               </div>
               <button
                 onClick={handleSignOut}
@@ -132,7 +142,9 @@ export const Header = (props: HeaderProps) => {
                 title='Đăng xuất'
               >
                 <LogOut className='w-4 h-4' />
-                <span className='hidden sm:inline'>Đăng xuất</span>
+                <span className='hidden sm:inline text-xs md:text-sm'>
+                  Đăng xuất
+                </span>
               </button>
             </div>
           )}

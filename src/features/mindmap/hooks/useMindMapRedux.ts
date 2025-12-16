@@ -682,7 +682,7 @@ export const useMindMapRedux = () => {
     [dispatch, mindMapId]
   );
 
-  // Auto arrange tất cả các node hiện tại
+  // Auto arrange tất cả các node hiện tại (tree dọc)
   const handleAutoArrange = useCallback(() => {
     dispatch((dispatch, getState) => {
       const state = getState().mindMap;
