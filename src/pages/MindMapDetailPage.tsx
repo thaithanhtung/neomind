@@ -20,25 +20,13 @@ import {
 import { TagInput } from '@/shared/components/TagInput';
 import { useKeyboardShortcuts } from '@/shared/hooks/useKeyboardShortcuts';
 import { ReactFlowInstance } from 'reactflow';
-import { ChevronDown, ChevronUp, Settings2 } from 'lucide-react';
+import { Settings2 } from 'lucide-react';
 
 export const MindMapDetailPage = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuthRedux();
   const [showInput, setShowInput] = useState(false);
-  const [showTags, setShowTags] = useState(() => {
-    const saved = localStorage.getItem('mindmap-show-tags');
-    return saved ? saved === 'true' : false;
-  });
-  const [showSystemPrompt, setShowSystemPrompt] = useState(() => {
-    const saved = localStorage.getItem('mindmap-show-system-prompt');
-    return saved ? saved === 'true' : false;
-  });
-  const [showModelConfig, setShowModelConfig] = useState(() => {
-    const saved = localStorage.getItem('mindmap-show-model-config');
-    return saved ? saved === 'true' : false;
-  });
   const {
     nodes,
     edges,
